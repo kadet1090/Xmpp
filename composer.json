@@ -1,0 +1,25 @@
+{
+    "name": "kadet/xmpp",
+    "type": "library",
+    "description": "Asynchronous, Non-Blocking, Event Driven Xmpp Library, which utilizes php 5.4 features.",
+    "keywords": ["jabber","xmpp","muc","asynchronous","non-blocking"],
+    "homepage": "https://github.com/kadet1090/Xmpp",
+    "license": "GPLv3",
+    "authors": [
+        {
+            "name": "Kacper \"Kadet\" Donat",
+            "email": "kadet1090@gmail.com",
+            "homepage": "http://kadet.pipe-software.xaa.pl",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": ">=5.4.0",
+        "kadet/utils": "1.*"
+    },
+    "autoload": {
+        "psr-0": {
+            "Kadet\\Xmpp\\": "."
+        }
+    }
+}
