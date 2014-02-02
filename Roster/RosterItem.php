@@ -19,15 +19,14 @@ use Kadet\Xmpp\Stanza\Presence;
  * @property-read string   $subscription
  * @property-read bool     $approved
  * @property-read string   $ask
- * @property-read string   $show
- * @property-read string   $status
+ * @property-read Presence $presence     Stores last presence.
  * @property-read string[] $groups
  * @property      string   $name
  * @property      Jid      $jid
  */
 class RosterItem
 {
-    use \Kadet\Utils\Property;
+    use Property;
 
     private $_name;
     private $_jid;
@@ -35,8 +34,7 @@ class RosterItem
     private $_approved;
     private $_ask;
 
-    private $_show;
-    private $_status;
+    private $_presence = null;
 
     private $_groups = [];
 
@@ -74,24 +72,14 @@ class RosterItem
         return $this->_subscription;
     }
 
-    public function _get_approved()
-    {
-        return $this->_approved;
-    }
-
     public function _get_ask()
     {
         return $this->_ask;
     }
 
-    public function _get_show()
+    public function _get_presence()
     {
-        return $this->_show;
-    }
-
-    public function _get_status()
-    {
-        return $this->_status;
+        return $this->_presence;
     }
 
     //</editor-fold>
@@ -117,10 +105,9 @@ class RosterItem
         $this->_roster->onItemChange->run($this);
     }
 
-    public function processPresence(Presence $presence)
+    public function applyPresence(Presence $presence)
     {
-        $this->_show = $presence->show;
-        $this->_status = $presence->status;
+        $this->_presence = $presence;
     }
 
     public static function fromXml(Roster $roster, $xml)

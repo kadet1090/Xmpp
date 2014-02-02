@@ -11,24 +11,40 @@ namespace Kadet\Xmpp\Roster;
 
 use Kadet\Utils\Event;
 use Kadet\Utils\Logger;
+use Kadet\Utils\Property;
+use Kadet\Xmpp\Stanza\Presence;
 use Kadet\Xmpp\Utils\XmlBranch;
 use Kadet\Xmpp\Jid;
 use Kadet\Xmpp\Stanza\Iq;
 use Kadet\Xmpp\XmppClient;
 
+/**
+ * Class Roster
+ * @package Kadet\Xmpp\Roster
+ * @property-read RosterItem[] $contacts Gives access to all contacts without groups.
+ */
 class Roster implements \ArrayAccess, \IteratorAggregate
 {
+    use Property;
+
     protected $_client;
     protected $_contacts = [];
 
     public $onItemChange;
+    public $onItem;
+    public $onComplete;
 
     public function __construct(XmppClient $client)
     {
         $this->_client = $client;
         $this->_client->onIq->add([$this, '_onIq']);
+        $this->_client->onPresence->add([$this, '_onPresence']);
+
 
         $this->onItemChange = new Event();
+        $this->onItem       = new Event();
+        $this->onComplete   = new Event();
+
         $this->onItemChange->add([$this, '_onItemChange']);
     }
 
@@ -40,17 +56,29 @@ class Roster implements \ArrayAccess, \IteratorAggregate
     {
         if ($iq->query == null || $iq->query->namespace != 'jabber:iq:roster') return;
 
+        $changed = [];
         switch ($iq->type) {
             case 'error':
                 Logger::warning('Error while retrieving roster from server!');
                 return;
             case 'set':
             case 'result':
-                foreach ($iq->query->item as $item) {
-                    $this->fromXml($item);
-                }
+                foreach ($iq->query->item as $item)
+                    $changed[] = $this->fromXml($item);
+
                 break;
         }
+
+        $this->onComplete->run($changed);
+    }
+
+    /**
+     * @param Presence $presence
+     * @internal
+     */
+    public function _onPresence(Presence $presence) {
+        if($item = $this->byJid($presence->from))
+            $item->applyPresence($presence);
     }
 
     public function add(Jid $jid, $name = null, $groups = [])
@@ -61,7 +89,7 @@ class Roster implements \ArrayAccess, \IteratorAggregate
 
     public function _onItemChange(RosterItem $item)
     {
-        var_dump($item);
+
         $this->_client->write($this->itemXml($item));
     }
 
@@ -87,6 +115,7 @@ class Roster implements \ArrayAccess, \IteratorAggregate
     private function fromXml($item)
     {
         $contact = RosterItem::fromXml($this, $item);
+        $this->onItem->run($contact);
         foreach ($this->_contacts as $name => $group) {
             foreach ($group as $key => $rc) {
                 if ($rc->jid->bare() == $contact->jid->bare())
@@ -98,6 +127,8 @@ class Roster implements \ArrayAccess, \IteratorAggregate
             if (!isset($this->_contacts[$group])) $this->_contacts[$group] = [];
             $this->_contacts[$group][$contact->name] = & $contact;
         }
+
+        return $contact;
     }
 
     /**
@@ -174,13 +205,25 @@ class Roster implements \ArrayAccess, \IteratorAggregate
         return new \ArrayIterator($this->_contacts);
     }
 
-    public function &byJid(Jid $jid)
+    /**
+     * @param Jid $jid
+     *
+     * @return RosterItem|null
+     */
+    public function byJid(Jid $jid)
     {
-        $it = new \RecursiveIteratorIterator(new \RecursiveArrayIterator($this->_contacts));
-        foreach ($it as &$contact)
-            if ($contact->jid == $jid) return $contact;
+        foreach ($this->contacts as $contact) {
+            if ($contact->jid->bare() == $jid->bare())
+                return $contact;
+        }
         return null;
     }
 
+    public function _get_contacts() {
+        $contacts = [];
+        foreach($this as $group)
+            $contacts = array_merge($contacts, $group);
 
+        return array_unique($contacts, SORT_REGULAR);
+    }
 }
