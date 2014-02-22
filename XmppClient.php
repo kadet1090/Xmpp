@@ -326,7 +326,7 @@ class XmppClient extends XmppSocket
             $iq->addChild(new xmlBranch("session"))->addAttribute("xmlns", "urn:ietf:params:xml:ns:xmpp-session");
             $this->write($iq->asXml());
             $this->isReady = true;
-            $this->onReady->run();
+            $this->onReady->run($this);
         } else
             throw new \RuntimeException('Resource binding error.');
     }
@@ -381,13 +381,13 @@ class XmppClient extends XmppSocket
         $stanza = Stanza::factory($this, $packet);
         switch ($packet->getName()) {
             case 'presence':
-                $this->onPresence->run($stanza);
+                $this->onPresence->run($this, $stanza);
                 break;
             case 'iq':
-                $this->onIq->run($stanza);
+                $this->onIq->run($this, $stanza);
                 break;
             case 'message':
-                $this->onMessage->run($stanza);
+                $this->onMessage->run($this, $stanza);
                 break;
 
             # SASL
@@ -395,9 +395,9 @@ class XmppClient extends XmppSocket
             case 'failure':
             case 'proceed':
                 if (preg_match('/xmlns=("|\')urn:ietf:params:xml:ns:xmpp-sasl("|\')/si', $stanza->xml->asXML()))
-                    $this->onAuth->run($stanza);
+                    $this->onAuth->run($this, $stanza);
                 elseif (preg_match('/xmlns=("|\')urn:ietf:params:xml:ns:xmpp-tls("|\')/si', $stanza->xml->asXML()))
-                    $this->onTls->run($stanza);
+                    $this->onTls->run($this, $stanza);
 
             break;
             case 'challenge':
@@ -428,10 +428,10 @@ class XmppClient extends XmppSocket
                 $this->rooms[$channelJid]->nick == $packet->from->resource
             ) $user->self = true;
 
-            $this->onJoin->run($this->rooms[$channelJid], $user, $this->rooms[$channelJid]->subject === false);
+            $this->onJoin->run($this, $this->rooms[$channelJid], $user, $this->rooms[$channelJid]->subject === false);
         } else {
             $user = $this->rooms[$channelJid]->users[$packet->from->resource];
-            $this->onLeave->run($this->rooms[$channelJid], $user);
+            $this->onLeave->run($this, $this->rooms[$channelJid], $user);
             $this->rooms[$channelJid]->removeUser($user);
         }
     }
@@ -461,7 +461,7 @@ class XmppClient extends XmppSocket
     public function process()
     {
         if ($this->isReady)
-            $this->onTick->run();
+            $this->onTick->run($this);
 
         Timer::update();
         $this->read();

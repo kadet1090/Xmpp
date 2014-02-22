@@ -69,7 +69,7 @@ class Roster implements \ArrayAccess, \IteratorAggregate
                 break;
         }
 
-        $this->onComplete->run($changed);
+        $this->onComplete->run($this, $changed);
     }
 
     /**
@@ -81,6 +81,7 @@ class Roster implements \ArrayAccess, \IteratorAggregate
             $item->applyPresence($presence);
     }
 
+    // @todo groups support
     public function add(Jid $jid, $name = null, $groups = [])
     {
         $item = new RosterItem($this, $jid, $name);
@@ -115,7 +116,7 @@ class Roster implements \ArrayAccess, \IteratorAggregate
     private function fromXml($item)
     {
         $contact = RosterItem::fromXml($this, $item);
-        $this->onItem->run($contact);
+        $this->onItem->run($this, $contact);
         foreach ($this->_contacts as $name => $group) {
             foreach ($group as $key => $rc) {
                 if ($rc->jid->bare() == $contact->jid->bare())

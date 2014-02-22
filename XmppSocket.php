@@ -49,7 +49,7 @@ abstract class XmppSocket extends BaseSocket
             $xml = "<" . $packets[$i] . $packets[($i + 1)];
 
             if (strpos($xml, '<stream:stream') !== false) $xml .= '</stream:stream>';
-            $this->onPacket->run(simplexml_load_string(preg_replace('/(<\/?)([a-z]*?)\:/si', '$1', $xml)));
+            $this->onPacket->run($this, simplexml_load_string(preg_replace('/(<\/?)([a-z]*?)\:/si', '$1', $xml)));
 
             Logger::debug($xml);
         }

@@ -49,7 +49,7 @@ class RosterItem
     public function _set_name($name)
     {
         $this->_name = $name;
-        $this->_roster->onItemChange->run($this);
+        $this->_roster->onItemChange->run($this->_roster, $this);
     }
 
     public function _get_groups()
@@ -95,14 +95,14 @@ class RosterItem
     {
         if (!array_search($group, $this->_groups))
             $this->_groups[] = $group;
-        $this->_roster->onItemChange->run($this);
+        $this->_roster->onItemChange->run($this->_roster, $this);
     }
 
     public function removeGroup($group)
     {
         if ($key = array_search($group, $this->_groups))
             unset($this->_groups[$key]);
-        $this->_roster->onItemChange->run($this);
+        $this->_roster->onItemChange->run($this->_roster, $this);
     }
 
     public function applyPresence(Presence $presence)

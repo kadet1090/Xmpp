@@ -86,7 +86,7 @@ abstract class BaseSocket
         stream_set_blocking($this->_socket, $blocking);
 
         $this->isConnected = true;
-        $this->onConnect->run();
+        $this->onConnect->run($this);
     }
 
     /**
@@ -118,7 +118,7 @@ abstract class BaseSocket
      */
     private function raiseError()
     {
-        $this->onError->run((int)$this->_error['code'], $this->_error['string']);
+        $this->onError->run($this, (int)$this->_error['code'], $this->_error['string']);
         throw new NetworkException($this->_error['string'], $this->_error['code']);
     }
 }
