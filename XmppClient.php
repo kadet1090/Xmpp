@@ -161,7 +161,7 @@ class XmppClient extends XmppSocket
      *
      * @internal
      */
-    public function _onConnect()
+    public function _onConnect(XmppClient $client)
     {
         $this->startStream();
         $this->wait('features', '', array($this->onStreamOpen, 'run'));
@@ -244,7 +244,7 @@ class XmppClient extends XmppSocket
      *
      * @internal
      */
-    public function _onAuth($result)
+    public function _onAuth(XmppClient $client, $result)
     {
         if ($result->xml->getName() == 'success') {
             $this->startStream();
@@ -278,7 +278,7 @@ class XmppClient extends XmppSocket
      *
      * @internal
      */
-    public function _onTls($result)
+    public function _onTls(XmppClient $client, $result)
     {
         if ($result->xml->getName() == 'proceed') {
             stream_set_blocking($this->_socket, true);
@@ -337,7 +337,7 @@ class XmppClient extends XmppSocket
      *
      * @ignore
      */
-    public function _onReady()
+    public function _onReady(XmppClient $client)
     {
         $iq = new xmlBranch("iq");
         $iq->addAttribute("type", "get");
@@ -370,11 +370,12 @@ class XmppClient extends XmppSocket
      * Should be private, but... php sucks!
      * DO NOT RUN IT, TRUST ME.
      *
+     * @param XmppClient        $client
      * @param \SimpleXMLElement $packet
      *
      * @internal
      */
-    public function _onPacket(\SimpleXMLElement $packet)
+    public function _onPacket(XmppClient $client, \SimpleXMLElement $packet)
     {
         parent::_onPacket($packet);
 

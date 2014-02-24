@@ -82,6 +82,10 @@ class RosterItem
         return $this->_presence;
     }
 
+    public function _get_approved()
+    {
+        return $this->_approved;
+    }
     //</editor-fold>
 
     public function __construct(Roster $roster, Jid $jid, $name = null)
