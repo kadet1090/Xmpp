@@ -435,7 +435,7 @@ class XmppClient extends XmppSocket
             ) $user->self = true;
 
             $this->onJoin->run($this, $this->rooms[$channelJid], $user, $this->rooms[$channelJid]->subject === false);
-        } else {
+        } elseif(isset($this->rooms[$channelJid])) {
             $user = $this->rooms[$channelJid]->users[$packet->from->resource];
             $this->onLeave->run($this, $this->rooms[$channelJid], $user);
             $this->rooms[$channelJid]->removeUser($user);
@@ -609,7 +609,7 @@ class XmppClient extends XmppSocket
      *
      * @param Jid $room Jid of room to leave.
      *
-     * @internal Plugins should use Room::leave() instead of that.
+     * @internal Plugins should use Room::() instead of that.
      *
      * @throws \InvalidArgumentException
      */
