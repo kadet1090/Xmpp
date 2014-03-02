@@ -111,7 +111,10 @@ class RosterItem
 
     public function applyPresence(Presence $presence)
     {
-        $this->_presence = $presence;
+        if($this->presence->type != 'unavailable')
+            $this->_presence[$presence->from->resource] = $presence;
+        else
+            unset($this->_presence[$presence->from->resource]);
     }
 
     public static function fromXml(Roster $roster, $xml)
