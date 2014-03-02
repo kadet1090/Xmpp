@@ -75,10 +75,12 @@ class Roster implements \ArrayAccess, \IteratorAggregate
     }
 
     /**
-     * @param Presence $presence
+     * @param \Kadet\Xmpp\XmppClient $client
+     * @param Presence               $presence
+     *
      * @internal
      */
-    public function _onPresence(Presence $presence) {
+    public function _onPresence(XmppClient $client, Presence $presence) {
         if($item = $this->byJid($presence->from))
             $item->applyPresence($presence);
     }

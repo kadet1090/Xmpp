@@ -239,9 +239,10 @@ class XmppClient extends XmppSocket
      * Should be private, but... php sucks!
      * DO NOT RUN IT, TRUST ME.
      *
-     * @param Stanza $result
-     * @throws \RuntimeException
+     * @param XmppClient $client
+     * @param Stanza     $result
      *
+     * @throws \RuntimeException
      * @internal
      */
     public function _onAuth(XmppClient $client, $result)
@@ -273,9 +274,10 @@ class XmppClient extends XmppSocket
      * Should be private, but... php sucks!
      * DO NOT RUN IT, TRUST ME.
      *
-     * @param Stanza $result
-     * @throws \RuntimeException
+     * @param XmppClient $client
+     * @param Stanza     $result
      *
+     * @throws \RuntimeException
      * @internal
      */
     public function _onTls(XmppClient $client, $result)
@@ -345,6 +347,8 @@ class XmppClient extends XmppSocket
         $iq->addChild(new xmlBranch("query"))->addAttribute("xmlns", "jabber:iq:roster");
         $this->write($iq);
 
+        $this->presence();
+
         $this->keepAliveTimer->start();
     }
 
@@ -370,14 +374,14 @@ class XmppClient extends XmppSocket
      * Should be private, but... php sucks!
      * DO NOT RUN IT, TRUST ME.
      *
-     * @param XmppClient        $client
-     * @param \SimpleXMLElement $packet
+     * @param \Kadet\Xmpp\XmppClient|\Kadet\Xmpp\XmppSocket $client
+     * @param \SimpleXMLElement                             $packet
      *
      * @internal
      */
-    public function _onPacket(XmppClient $client, \SimpleXMLElement $packet)
+    public function _onPacket(XmppSocket $client, \SimpleXMLElement $packet)
     {
-        parent::_onPacket($packet);
+        parent::_onPacket($client, $packet);
 
         $stanza = Stanza::factory($this, $packet);
         switch ($packet->getName()) {
@@ -411,11 +415,12 @@ class XmppClient extends XmppSocket
      * Should be private, but... php sucks!
      * DO NOT RUN IT, TRUST ME.
      *
-     * @param Presence $packet
+     * @param XmppClient $client
+     * @param Presence   $packet
      *
      * @internal
      */
-    public function _onPresence(Presence $packet)
+    public function _onPresence(XmppClient $client, Presence $packet)
     {
         $channelJid = $packet->from->bare();
         $jid = new Jid($channelJid);
@@ -441,11 +446,12 @@ class XmppClient extends XmppSocket
      * Should be private, but... php sucks!
      * DO NOT RUN IT, TRUST ME.
      *
-     * @param Message $packet
+     * @param XmppClient $client
+     * @param Message    $packet
      *
      * @internal
      */
-    public function _onMessage(Message $packet)
+    public function _onMessage(XmppClient $client, Message $packet)
     {
         if ($packet->type != 'groupchat' || !isset($this->rooms[$packet->from->bare()])) return;
 

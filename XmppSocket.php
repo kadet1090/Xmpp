@@ -70,11 +70,12 @@ abstract class XmppSocket extends BaseSocket
     }
 
     /**
+     * @param XmppSocket        $socket
      * @param \SimpleXMLElement $packet
      *
      * @internal
      */
-    public function _onPacket(\SimpleXMLElement $packet)
+    public function _onPacket(XmppSocket $socket, \SimpleXMLElement $packet)
     {
         $name = $packet->getName();
         if ($name == 'features')
