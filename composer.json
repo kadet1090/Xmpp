@@ -18,7 +18,7 @@
         "kadet/utils": "*"
     },
     "autoload": {
-        "psr-0": {
+        "psr-4": {
             "Kadet\\Xmpp\\": "."
         }
     }
