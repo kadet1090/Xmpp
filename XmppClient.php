@@ -3,118 +3,172 @@ namespace Kadet\Xmpp;
 
 use Kadet\Utils\Event;
 use Kadet\Utils\Timer;
+use Kadet\Xmpp\Roster\Roster;
 use Kadet\Xmpp\Sasl\Mechanism;
 use Kadet\Xmpp\Sasl\SaslFactory;
-use Kadet\Xmpp\Utils\XmlBranch;
-use Kadet\Xmpp\Roster\Roster;
 use Kadet\Xmpp\Stanza\Message;
 use Kadet\Xmpp\Stanza\Presence;
 use Kadet\Xmpp\Stanza\Stanza;
+use Kadet\Xmpp\Utils\XmlBranch;
 
 /**
  * XmppClient class provides basic XMPP/Jabber functionality.
  *
  * @package Kadet\Xmpp
- * @author Kadet <kadet1090@gmail.com>
+ * @author  Kadet <kadet1090@gmail.com>
  */
 class XmppClient extends XmppSocket
 {
     /**
      * Event fired when authorization process ends.
-     * Takes one argument of type SimpleXMLElement.
+     *
+     * @event-arg XmppClient        $client
+     * @event-arg \SimpleXMLElement $packet
+     *
      * @var \Kadet\Utils\Event
      */
     public $onAuth;
 
     /**
      * Event fired when stream is opened and ready to accept data.
-     * Takes no arguments.
+     *
+     * @event-arg XmppClient $client
+     *
      * @var \Kadet\Utils\Event
      */
     public $onStreamOpen;
 
     /**
      * Event fired when bot is ready (stream is opened, client is successfully authed and session is registered)
-     * Takes no arguments.
+     *
      * @var \Kadet\Utils\Event
      */
     public $onReady;
 
     /**
      * Event fired on every loop tick.
-     * Takes no arguments.
+     *
+     * @event-arg XmppClient $client
+     *
      * @var \Kadet\Utils\Event
      */
     public $onTick;
 
     /**
      * Event fired when presence packet came.
-     * Takes one argument of type SimpleXMLElement.
+     *
+     * @event-arg XmppClient        $client
+     * @event-arg \SimpleXMLElement $packet
+     *
      * @var \Kadet\Utils\Event
      */
     public $onPresence;
 
     /**
      * Event fired when iq packet came.
-     * Takes one argument of type SimpleXMLElement.
+     *
+     * @event-arg XmppClient        $client
+     * @event-arg \SimpleXMLElement $packet
+     *
      * @var \Kadet\Utils\Event
      */
     public $onIq;
 
     /**
      * Event fired when message packet came.
-     * Takes one argument of type SimpleXMLElement.
+     *
+     * @event-arg XmppClient $client
+     * @event-arg \SimpleXMLElement
+     *
      * @var \Kadet\Utils\Event
      */
     public $onMessage;
 
     /**
      * Event fired when user joins to room.
-     * Takes two arguments:
-     * Room $room
-     * User $user
-     * bool $afterBroadcast
+     *
+     * @event-arg XmppClient $client
+     * @event-arg Room       $room
+     * @event-arg User       $user
+     * @event-arg bool       $afterBroadcast
+     *
      * @var \Kadet\Utils\Event
      */
     public $onJoin;
 
     /**
      * Event fired when user leaves room.
-     * Takes two arguments:
      *
-     * Room $room
-     * User $user
+     * @event-arg XmppClient $client
+     * @event-arg Room       $room
+     * @event-arg User       $user
+     *
+     * @var \Kadet\Utils\Event
      */
     public $onLeave;
 
+    /**
+     * Event fired when client leaves room.
+     *
+     * @event-arg XmppClient $client
+     * @event-arg Room       $room
+     *
+     * @var \Kadet\Utils\Event
+     */
+    public $onRoomLeave;
+
+    /**
+     * Event fired when client joins room.
+     *
+     * @event-arg XmppClient $client
+     * @event-arg Room       $room
+     *
+     * @var \Kadet\Utils\Event
+     */
+    public $onRoomJoin;
+
+    /**
+     * Event fired when TSL connection is established.
+     *
+     * @event-arg XmppClient $client
+     * @event-arg Room       $room
+     * @event-arg User       $user
+     *
+     * @var \Kadet\Utils\Event
+     */
     public $onTsl;
 
     /**
      * Jabber account Jid
+     *
      * @var Jid
      */
     public $jid;
 
     /**
      * Password to jabber account.
+     *
      * @var string
      */
     protected $password;
 
     /**
      * Mechanism used in sasl authentication
+     *
      * @var Mechanism
      */
     protected $_mechanism;
 
     /**
      * If client is connected and authed is true.
+     *
      * @var bool
      */
     public $isReady;
 
     /**
      * Rooms list.
+     *
      * @var Room[]
      */
     public $rooms = array();
@@ -122,28 +176,30 @@ class XmppClient extends XmppSocket
     public $roster;
 
     /**
-     * @param Jid $jid Clients JID
+     * @param Jid    $jid      Clients JID
      * @param string $password Account Password
-     * @param int $port Server port (default 5222)
-     * @param int $timeout Clients timeout in seconds (default 30)
+     * @param int    $port     Server port (default 5222)
+     * @param int    $timeout  Clients timeout in seconds (default 30)
      */
     public function __construct(Jid $jid, $password, $port = 5222, $timeout = 30)
     {
         parent::__construct($jid->server, $port, $timeout);
-        $this->jid = $jid;
+        $this->jid      = $jid;
         $this->password = $password;
         $this->onConnect->add(array($this, '_onConnect'));
 
-        $this->onAuth = new Event();
+        $this->onAuth       = new Event();
         $this->onStreamOpen = new Event();
-        $this->onReady = new Event();
-        $this->onTick = new Event();
-        $this->onPresence = new Event();
-        $this->onMessage = new Event();
-        $this->onIq = new Event();
-        $this->onJoin = new Event();
-        $this->onLeave = new Event();
-        $this->onTls = new Event();
+        $this->onReady      = new Event();
+        $this->onTick       = new Event();
+        $this->onPresence   = new Event();
+        $this->onMessage    = new Event();
+        $this->onIq         = new Event();
+        $this->onJoin       = new Event();
+        $this->onLeave      = new Event();
+        $this->onTls        = new Event();
+        $this->onRoomJoin   = new Event();
+        $this->onRoomLeave  = new Event();
 
         $this->roster = new Roster($this);
 
@@ -191,11 +247,13 @@ class XmppClient extends XmppSocket
     {
         if (isset($this->_features->starttls)) {
             $this->startTls();
+
             return;
         }
 
         if (isset($this->_features->mechanisms)) {
             $this->auth();
+
             return;
         }
     }
@@ -299,7 +357,7 @@ class XmppClient extends XmppSocket
     private function _bind()
     {
         $xml = new XmlBranch('iq');
-        $id = uniqid('bind_');
+        $id  = uniqid('bind_');
         $xml->addAttribute('id', $id)
             ->addAttribute('type', 'set');
 
@@ -314,7 +372,9 @@ class XmppClient extends XmppSocket
 
     /**
      * Resource binding result.
+     *
      * @param $packet
+     *
      * @throws \RuntimeException
      *
      * @internal
@@ -404,7 +464,7 @@ class XmppClient extends XmppSocket
                 elseif (preg_match('/xmlns=("|\')urn:ietf:params:xml:ns:xmpp-tls("|\')/si', $stanza->xml->asXML()))
                     $this->onTls->run($this, $stanza);
 
-            break;
+                break;
             case 'challenge':
                 $this->_onChallenge($stanza);
                 break;
@@ -423,7 +483,7 @@ class XmppClient extends XmppSocket
     public function _onPresence(XmppClient $client, Presence $packet)
     {
         $channelJid = $packet->from->bare();
-        $jid = new Jid($channelJid);
+        $jid        = new Jid($channelJid);
 
         if (!$jid->isChannel()) return;
 
@@ -435,7 +495,7 @@ class XmppClient extends XmppSocket
             ) $user->self = true;
 
             $this->onJoin->run($this, $this->rooms[$channelJid], $user, $this->rooms[$channelJid]->subject === false);
-        } elseif(isset($this->rooms[$channelJid])) {
+        } elseif (isset($this->rooms[$channelJid])) {
             $user = $this->rooms[$channelJid]->users[$packet->from->resource];
             $this->onLeave->run($this, $this->rooms[$channelJid], $user);
             $this->rooms[$channelJid]->removeUser($user);
@@ -494,6 +554,7 @@ class XmppClient extends XmppSocket
     public function getUserByJid(Jid $user)
     {
         if (!$user->fromChannel()) return null;
+
         return isset($this->rooms[$user->bare()]->users[$user->resource]) ?
             $this->rooms[$user->bare()]->users[$user->resource] :
             null;
@@ -504,9 +565,9 @@ class XmppClient extends XmppSocket
      *
      * You could use it to send message to groupchat, but it is highly not recommended.
      *
-     * @param Jid $jid Receiver jid
+     * @param Jid    $jid     Receiver jid
      * @param string $message Message content
-     * @param string $type Message type: char or groupchat.
+     * @param string $type    Message type: char or groupchat.
      */
     public function message(Jid $jid, $message, $type = 'chat')
     {
@@ -521,7 +582,7 @@ class XmppClient extends XmppSocket
     /**
      * Changes client status on server.
      *
-     * @param string $show New show status for client, one of these:
+     * @param string $show   New show status for client, one of these:
      *                       chat, available, away, xa, dnd, unavailable.
      *                       (default available)
      * @param string $status Additional text status.
@@ -541,13 +602,13 @@ class XmppClient extends XmppSocket
     /**
      * Checks client version.
      *
-     * @param Jid $jid Users jid.
+     * @param Jid      $jid      Users jid.
      * @param callable $delegate Delegate to be executed after proper packet came.
      *                           Delegate takes one argument (packet) of type SimpleXMLElement.
      */
     public function version(Jid $jid, callable $delegate)
     {
-        $id = uniqid('osversion_');
+        $id  = uniqid('osversion_');
         $xml = new xmlBranch("iq");
         $xml->addAttribute("from", $this->jid)
             ->addAttribute("to", $jid)
@@ -562,13 +623,14 @@ class XmppClient extends XmppSocket
 
     /**
      * Pings user.
-     * @param Jid $jid User jid.
+     *
+     * @param Jid      $jid      User jid.
      * @param callable $delegate Delegate to be executed after proper packet came.
      *                           Delegate takes one argument (packet) of type SimpleXMLElement.
      */
     public function ping(Jid $jid, callable $delegate)
     {
-        $id = uniqid('ping_');
+        $id  = uniqid('ping_');
         $xml = new xmlBranch("iq");
         $xml->addAttribute("from", $this->jid)
             ->addAttribute("to", $jid)
@@ -584,7 +646,7 @@ class XmppClient extends XmppSocket
     /**
      * Joins to the room.
      *
-     * @param Jid $room Room to join, full jid.
+     * @param Jid    $room Room to join, full jid.
      * @param string $nick Nick on room.
      *
      * @return Room Room data.
@@ -601,7 +663,9 @@ class XmppClient extends XmppSocket
         $xml->addChild(new xmlBranch("x"))->addAttribute("xmlns", "http://jabber.org/protocol/muc");
         $this->write($xml->asXml());
 
-        return $this->rooms[$room->__toString()] = new Room($this, $room, $nick);
+        $this->rooms[$room->__toString()] = new Room($this, $room, $nick);
+        $this->onRoomJoin->run($this, $this->rooms[$room->__toString()]);
+        return $this->rooms[$room->__toString()];
     }
 
     /**
@@ -625,15 +689,17 @@ class XmppClient extends XmppSocket
         $xml->addChild(new xmlBranch("x"))->addAttribute("xmlns", "http://jabber.org/protocol/muc");
         $this->write($xml->asXml());
 
+        $this->onRoomLeave->run($this, $this->rooms[$room->bare()]);
+
         unset($this->rooms[$room->bare()]);
     }
 
     /**
      * Changes user role on room.
      *
-     * @param Jid $room Jid of room.
-     * @param string $nick Nick of user.
-     * @param string $role New users role.
+     * @param Jid    $room   Jid of room.
+     * @param string $nick   Nick of user.
+     * @param string $role   New users role.
      *                       visitor, none, participant or moderator.
      * @param string $reason Reason of changing role. (default empty)
      *
@@ -665,11 +731,11 @@ class XmppClient extends XmppSocket
     /**
      * Changes user affiliation.
      *
-     * @param Jid $room Jid of room.
-     * @param Jid $user Users Jid.
+     * @param Jid    $room        Jid of room.
+     * @param Jid    $user        Users Jid.
      * @param string $affiliation New affiliation for user.
      *                            none, outcast, member, admin, owner
-     * @param string $reason Reason of changing user affiliation.
+     * @param string $reason      Reason of changing user affiliation.
      *
      * @internal Plugins should use Room::affiliation() instead of that.
      *
@@ -699,7 +765,7 @@ class XmppClient extends XmppSocket
     /**
      * Sets room (or conversation) subject.
      *
-     * @param Jid $jid Jid to send subject msg.
+     * @param Jid    $jid     Jid to send subject msg.
      * @param string $subject New subject.
      *
      * @internal Plugins should use Room::subject() instead of that.
@@ -717,9 +783,9 @@ class XmppClient extends XmppSocket
     /**
      * Gets user affiliation list.
      *
-     * @param Jid $room Jid of room to query.
-     * @param string $affiliation Affiliation type.
-     * @param callable $delegate Delegate to run after proper packet came.
+     * @param Jid      $room        Jid of room to query.
+     * @param string   $affiliation Affiliation type.
+     * @param callable $delegate    Delegate to run after proper packet came.
      *                              Delegate takes one argument (packet) of type SimpleXMLElement.
      *
      * @internal Plugins should use Room::affiliationList() instead of that.
@@ -732,7 +798,7 @@ class XmppClient extends XmppSocket
             throw new \InvalidArgumentException('affiliation');
 
         $xml = new xmlBranch("iq");
-        $id = uniqid('affiliate_');
+        $id  = uniqid('affiliate_');
         $xml->addAttribute("type", "get")
             ->addAttribute('from', $this->jid->__toString())
             ->addAttribute("to", $room->__toString())

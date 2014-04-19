@@ -29,18 +29,16 @@ class Room
     public $subject = false;
 
     /**
-     * Stores room configuration with additional client data (ie. join time)
-     * @var \SimpleXMLElement
-     */
-    public $configuration = array();
-
-    /**
      * Clients nick on room
      * @var string
      */
     public $nick;
 
-    protected static $config;
+    /**
+     * Join timestamp.
+     * @var int
+     */
+    public $jointime;
 
     /**
      * @param XmppClient $client Xmpp Client instance.
@@ -49,26 +47,10 @@ class Room
      */
     public function __construct(XmppClient $client, Jid $jid, $nick)
     {
-        $this->_client = $client;
-        $this->jid     = $jid;
-        $this->nick    = $nick;
-
-        if (empty(self::$config))
-            self::$config = simplexml_load_file('./Config/Rooms.xml');
-
-        $this->configuration = self::$config->xpath("/rooms/room[@jid='{$this->jid->bare()}']");
-
-        if (empty($this->configuration)) {
-            self::$config->addChild('room');
-            self::$config->room[count(self::$config->room) - 1]->addAttribute('jid', $this->jid->bare());
-            $this->configuration = self::$config->room[count(self::$config->room) - 1];
-        } else {
-            $this->configuration = $this->configuration[0];
-        }
-
-        $this->configuration->jointime = time();
-
-        self::$config->saveXML('./Config/Rooms.xml');
+        $this->_client  = $client;
+        $this->jid      = $jid;
+        $this->nick     = $nick;
+        $this->jointime = time();
     }
 
     /**
@@ -195,13 +177,5 @@ class Room
     public function setSubject($subject)
     {
         $this->_client->setSubject($this->jid, $subject);
-    }
-
-    /**
-     * Saves rooms configuration to file.
-     */
-    public static function save()
-    {
-        self::$config->asXML('./Config/Rooms.xml');
     }
 }
