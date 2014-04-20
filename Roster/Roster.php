@@ -61,7 +61,7 @@ class Roster implements \ArrayAccess, \IteratorAggregate
         $changed = [];
         switch ($iq->type) {
             case 'error':
-                Logger::warning('Error while retrieving roster from server!');
+                $client->logger->warning('Error while retrieving roster from server!');
                 return;
             case 'set':
             case 'result':

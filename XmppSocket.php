@@ -27,16 +27,61 @@ abstract class XmppSocket extends SocketClient
         $this->keepAliveTimer = new Timer(15, array($this, 'keepAliveTick'));
         $this->keepAliveTimer->stop(); // We don't want to run this before connection is finalized.
         $this->onPacket->add(array($this, '_onPacket'));
+        $this->onDisconnect->add(array($this, '_onDisconnect'));
+
+        $settings = [
+            'indent' => true,
+            'input-xml' => true,
+            'output-xml' => true,
+            'wrap' => 0
+        ];
+
+        $this->onReceive->add(function (SocketClient $socket, $packet) use ($settings) {
+            $len = strlen($packet);
+
+            if(function_exists('tidy_repair_string'))
+                $packet = trim(tidy_repair_string($packet, $settings));
+
+            if(isset($socket->logger))
+                $socket->logger->debug("Received {length} bytes: \n{packet}", [
+                    'length' => $len,
+                    'packet' => $packet
+                ]);
+        });
+        $this->onSend->add(function ($socket, $packet) use ($settings) {
+            $len = strlen($packet);
+
+            if(function_exists('tidy_repair_string'))
+                $packet = trim(tidy_repair_string($packet, $settings));
+
+            if(isset($socket->logger))
+                $socket->logger->debug("sent {length} bytes: \n{packet}", [
+                    'length' => $len,
+                    'packet' => $packet
+                ]);
+        });
     }
 
     public function read()
     {
         $result = '';
         do {
-            $content = stream_get_contents($this->_socket);
+            if (($content = stream_get_contents($this->_socket)) === false) {
+                $this->disconnect();
+                $this->raiseError();
+
+                return false;
+            }
+
             $result .= $content;
         } while (!preg_match("/('\/|\"\/|iq|ge|ce|am|es|se|ss|ge|re|.'|.\")>$/", substr($result, -3)) && !empty($result));
+
+        if (!empty($result))
+            $this->onReceive->run($this, $result);
+
         $this->_parse(trim($result));
+
+        return $result;
     }
 
     /**
@@ -50,8 +95,6 @@ abstract class XmppSocket extends SocketClient
 
             if (strpos($xml, '<stream:stream') !== false) $xml .= '</stream:stream>';
             $this->onPacket->run($this, simplexml_load_string(preg_replace('/(<\/?)([a-z]*?)\:/si', '$1', $xml)));
-
-            Logger::debug($xml);
         }
     }
 
@@ -91,6 +134,16 @@ abstract class XmppSocket extends SocketClient
                 $wait['delegate']($packet);
             }
         }
+    }
+
+    /**
+     * @param \Kadet\SocketLib\SocketClient $socket
+     *
+     * @internal
+     */
+    public function _onDisconnect(SocketClient $socket)
+    {
+        $socket->send('</stream:stream>');
     }
 
     public function write($packet) { $this->send($packet); }
