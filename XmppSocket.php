@@ -1,12 +1,12 @@
 <?php
 namespace Kadet\Xmpp;
 
+use Kadet\SocketLib\SocketClient;
 use Kadet\Utils\Event;
 use Kadet\Utils\Logger;
 use Kadet\Utils\Timer;
-use Kadet\Xmpp\Network\BaseSocket;
 
-abstract class XmppSocket extends BaseSocket
+abstract class XmppSocket extends SocketClient
 {
     public $onPacket;
 
@@ -21,7 +21,7 @@ abstract class XmppSocket extends BaseSocket
      */
     public function __construct($address, $port = 5222, $timeout = 30)
     {
-        parent::__construct($address, $port, $timeout);
+        parent::__construct($address, $port, 'tcp', $timeout);
 
         $this->onPacket = new Event();
         $this->keepAliveTimer = new Timer(15, array($this, 'keepAliveTick'));
@@ -92,6 +92,8 @@ abstract class XmppSocket extends BaseSocket
             }
         }
     }
+
+    public function write($packet) { $this->send($packet); }
 
     /**
      * @internal

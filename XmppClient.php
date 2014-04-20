@@ -128,7 +128,7 @@ class XmppClient extends XmppSocket
     public $onRoomJoin;
 
     /**
-     * Event fired when TSL connection is established.
+     * Event fired when TLS connection is established.
      *
      * @event-arg XmppClient $client
      * @event-arg Room       $room
@@ -136,7 +136,7 @@ class XmppClient extends XmppSocket
      *
      * @var \Kadet\Utils\Event
      */
-    public $onTsl;
+    public $onTls;
 
     /**
      * Jabber account Jid
