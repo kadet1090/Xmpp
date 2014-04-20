@@ -209,6 +209,8 @@ class XmppClient extends XmppSocket
         $this->onPresence->add(array($this, '_onPresence'));
         $this->onMessage->add(array($this, '_onMessage'));
         $this->onTls->add(array($this, '_onTls'));
+
+        $this->onDisconnect->add(function ($client) { $this->logger->info('Disconnected.'); });
     }
 
     /**
@@ -219,6 +221,7 @@ class XmppClient extends XmppSocket
      */
     public function _onConnect(XmppClient $client)
     {
+        if($this->logger) $this->logger->info('Connected to {server}.', ['server' => $client->jid->server]);
         $this->startStream();
         $this->wait('features', '', array($this->onStreamOpen, 'run'));
     }
@@ -260,6 +263,8 @@ class XmppClient extends XmppSocket
 
     private function startTls()
     {
+        if($this->logger) $this->logger->notice('Starting TLS negotiation.');
+
         $xml = new XmlBranch('starttls');
         $xml->addAttribute('xmlns', 'urn:ietf:params:xml:ns:xmpp-tls');
         $this->write($xml);
@@ -272,6 +277,12 @@ class XmppClient extends XmppSocket
      */
     private function auth()
     {
+        if($this->logger)
+            $this->logger->notice('SASL Auth, available mechanisms: {mechanisms}', [
+                'mechanisms' => implode(', ', array_map(function ($item) {
+                    return (string)$item;
+                }, (array)$this->_features->mechanisms->mechanism))
+            ]);
 
         $xml = new XmlBranch('auth');
         $xml->addAttribute('xmlns', 'urn:ietf:params:xml:ns:xmpp-sasl');
@@ -284,6 +295,9 @@ class XmppClient extends XmppSocket
 
         if (!$mechanism)
             throw new \RuntimeException('This client is not supporting any of server auth mechanisms.');
+
+        if($this->logger)
+            $this->logger->notice('Chosen mechanism: {mechanism}', ['mechanism' => $current]);
 
         $this->_mechanism = $mechanism;
 
@@ -306,6 +320,10 @@ class XmppClient extends XmppSocket
     public function _onAuth(XmppClient $client, $result)
     {
         if ($result->xml->getName() == 'success') {
+
+            if($this->logger)
+                $this->logger->info('SASL Auth successful.');
+
             $this->startStream();
             $this->_bind();
         } else
@@ -341,6 +359,9 @@ class XmppClient extends XmppSocket
     public function _onTls(XmppClient $client, $result)
     {
         if ($result->xml->getName() == 'proceed') {
+            if($this->logger)
+                $this->logger->info('TLS Connection established.');
+
             stream_set_blocking($this->_socket, true);
             stream_socket_enable_crypto($this->_socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
             stream_set_blocking($this->_socket, false);
