@@ -75,6 +75,7 @@ class Jid
 
     static public function isJid($jid)
     {
+        if($jid instanceof Jid) return true;
         return preg_match('#([^@\/\"\'\s\&\:><]+)\@([a-z_\-\.]*[a-z]{2,3})(\/[^@\/\&\:><]*)?#si', $jid);
     }
 }
