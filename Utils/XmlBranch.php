@@ -207,7 +207,6 @@ class XmlBranch implements \ArrayAccess
         $return = [];
         foreach($results as $result) {
             $dom = dom_import_simplexml($result);
-            var_dump($dom->getNodePath());
             $nodepath = explode('/', substr($dom->getNodePath(), 1));
             array_shift($nodepath);
             $node = $this;
