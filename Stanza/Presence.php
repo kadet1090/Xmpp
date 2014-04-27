@@ -10,9 +10,13 @@
 namespace Kadet\Xmpp\Stanza;
 
 use Kadet\Xmpp\Jid;
+use Kadet\Xmpp\Utils\XmlArray;
+use Kadet\Xmpp\Utils\XmlBranch;
+use Kadet\Xmpp\XmppClient;
 
 /**
  * Class Presence
+ *
  * @package Kadet\Xmpp\Stanza
  *
  * @property string $show
@@ -24,20 +28,28 @@ use Kadet\Xmpp\Jid;
  */
 class Presence extends Stanza
 {
-    private $_show;
-    private $_status;
-    private $_priority;
+    /**
+     * @var Jid
+     */
     private $_jid;
-    private $_role;
-    private $_affiliation;
 
     /**
      * @ignore
      */
     public function _get_show()
     {
-        if (!isset($this->_show)) $this->_show = isset($this->xml->show) ? (string)$this->xml->show : 'available';
-        return $this->_show;
+        return isset($this->content['show'][0]) ? (string)$this->content['show'][0] : 'available';
+    }
+
+    /**
+     * @ignore
+     */
+    public function _set_show($value)
+    {
+        if(!isset($this->content['show']))
+            $this->content['show'] = new XmlArray('show');
+
+        $this->content['show'][0] = (string)$value;
     }
 
     /**
@@ -45,8 +57,18 @@ class Presence extends Stanza
      */
     public function _get_status()
     {
-        if (!isset($this->_status)) $this->_status = isset($this->xml->status) ? (string)$this->xml->status : null;
-        return $this->_status;
+        return isset($this->content['status'][0]) ? (string)$this->content['status'][0] : null;
+    }
+
+    /**
+     * @ignore
+     */
+    public function _set_status($value)
+    {
+        if(!isset($this->content['status']))
+            $this->content['status'] = new XmlArray('status');
+
+        $this->content['status'][0] = (string)$value;
     }
 
     /**
@@ -54,8 +76,18 @@ class Presence extends Stanza
      */
     public function _get_priority()
     {
-        if (!isset($this->_priority)) $this->_priority = isset($this->xml->priority) ? (string)$this->xml->priority : null;
-        return $this->_priority;
+        return isset($this->content['priority'][0]) ? (int)$this->content['priority'][0] : null;
+    }
+
+    /**
+     * @ignore
+     */
+    public function _set_priority($value)
+    {
+        if(!isset($this->content['priority']))
+            $this->content['priority'] = new XmlArray('priority');
+
+        $this->content['priority'][0] = (int)$value;
     }
 
     /**
@@ -63,12 +95,28 @@ class Presence extends Stanza
      */
     public function _get_role()
     {
-        if (!isset($this->_role)) {
-            $this->_role = 'participant';
-            if (isset($this->xml->x->item['role'])) $this->_role = $this->xml->x->item['role'];
-            elseif (isset($this->xml->x[0]->item['role'])) $this->_role = $this->xml->x[0]->item['role']; elseif (isset($this->xml->x[1]->item['role'])) $this->_role = $this->xml->x[1]->item['role'];
+        $item = $this->xpath('//user:item[@role]', ['user' => 'http://jabber.org/protocol/muc#user']);
+        if(!empty($item))
+            return $item[0]['role'];
+
+        return 'participant';
+    }
+
+    /**
+     * @ignore
+     */
+    public function _set_role($value)
+    {
+        $item = $this->xpath('//user:item', ['user' => 'http://jabber.org/protocol/muc#user']);
+        if(!empty($item)) {
+            $item = $item[0];
+        } else {
+            $item = $this->addChild(new XmlBranch('x'));
+            $item['xmlns'] = 'http://jabber.org/protocol/muc#user';
+            $item = $item->addChild(new XmlBranch('item'));
         }
-        return $this->_role;
+
+        $item['role'] = (string)$value;
     }
 
     /**
@@ -76,26 +124,61 @@ class Presence extends Stanza
      */
     public function _get_affiliation()
     {
-        if (!isset($this->_affiliation)) {
-            $this->_affiliation = 'none';
-            if (isset($this->xml->x->item['affiliation'])) $this->_affiliation = $this->xml->x->item['affiliation'];
-            elseif (isset($this->xml->x[0]->item['affiliation'])) $this->_affiliation = $this->xml->x[0]->item['affiliation']; elseif (isset($this->xml->x[1]->item['affiliation'])) $this->_affiliation = $this->xml->x[1]->item['affiliation'];
+        $item = $this->xpath('//user:item[@affiliation]', ['user' => 'http://jabber.org/protocol/muc#user']);
+        if(!empty($item))
+            return $item[0]['affiliation'];
+
+        return 'none';
+    }
+
+    public function _set_affiliation($value)
+    {
+        $item = $this->xpath('//user:item', ['user' => 'http://jabber.org/protocol/muc#user']);
+        if(!empty($item)) {
+            $item = $item[0];
+        } else {
+            $item = $this->addChild(new XmlBranch('x'));
+            $item['xmlns'] = 'http://jabber.org/protocol/muc#user';
+            $item = $item->addChild(new XmlBranch('item'));
         }
-        return $this->_affiliation;
+
+        $item['affiliation'] = (string)$value;
     }
 
     /**
      * Helper, gets jid from packet.
+     *
      * @return Jid
      */
     public function _get_jid()
     {
-        if (!isset($this->_jid)) {
-            if (isset($this->xml->x->item['jid'])) $jid = $this->xml->x->item['jid'];
-            elseif (isset($this->xml->x[0]->item['jid'])) $jid = $this->xml->x[0]->item['jid']; elseif (isset($this->xml->x[1]->item['jid'])) $jid = $this->xml->x[1]->item['jid']; else $jid = $this->xml['from'];
+        $jid = $this['from'];
+        $item = $this->xpath('//user:item[@jid]', ['user' => 'http://jabber.org/protocol/muc#user']);
 
-            $this->_jid = isset($jid) ? new Jid($jid) : null;
-        }
+        if(!empty($item))
+            $jid = $item[0]['jid'];
+
+        if(!isset($this->_jid) || $this->_jid->__toString() != $jid)
+            $this->_jid = new Jid($jid);
+
         return $this->_jid;
+    }
+
+    public static function fromXml($xml, XmppClient $client = null)
+    {
+        if (!($xml instanceof \SimpleXMLElement))
+            $xml = @simplexml_load_string($xml);
+
+        if($xml->getName() != 'presence')
+            return XmlBranch::fromXml($xml);
+
+        return parent::fromXml($xml, $client);
+    }
+
+    public function __construct($show = null, $status = null, $priority = null) {
+        $this->tag = 'presence';
+        if(isset($show)) $this->show = $show;
+        if(isset($status)) $this->status = $status;
+        if(isset($priority)) $this->priority = $priority;
     }
 }

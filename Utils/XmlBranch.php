@@ -1,9 +1,13 @@
 <?php
 namespace Kadet\Xmpp\Utils;
 
-class XmlBranch
+use Kadet\Utils\Property;
+
+class XmlBranch implements \ArrayAccess
 {
     const XML = '<?xml version="1.0" encoding="utf-8"?>';
+
+    use Property;
 
     /**
      * Tag of branch.
@@ -15,18 +19,20 @@ class XmlBranch
      * Branch attributes.
      * @var array
      */
-    public $attributes = array();
+    public $attributes = [];
 
     /**
      * Branch content or children.
-     * @var array|string
+     * @var XmlArray[]|string
      */
-    public $content = array();
+    public $content = [];
+
+    public $_ns = [];
 
     /**
      * @param string $tag Tag of branch.
      */
-    public function __construct($tag)
+    public function __construct($tag = '')
     {
         $this->tag = $tag;
     }
@@ -53,9 +59,9 @@ class XmlBranch
      *
      * @return XmlBranch Added child.
      */
-    public function addChild(xmlBranch $child)
+    public function addChild(XmlBranch $child)
     {
-        if (!isset($this->content[$child->tag])) $this->content[$child->tag] = array();
+        if (!isset($this->content[$child->tag])) $this->content[$child->tag] = new XmlArray($child->tag);
 
         $this->content[$child->tag][] = $child;
 
@@ -104,11 +110,43 @@ class XmlBranch
      * @param string $name
      * @return XmlBranch|null
      */
-    public function __get($name)
+    public function _get($name)
+    {
+        if (is_array($this->content)) {
+            if (!isset($this->content[$name])) $this->content[$name] = new XmlArray($name);
+            return $this->content[$name];
+        }
+        else return null;
+    }
+
+    /**
+     * @param string $name
+     * @param        $value
+     *
+     * @return XmlBranch|null
+     */
+    public function _set($name, $value)
+    {
+        if (!isset($this->content[$name])) $this->content[$name] = new XmlArray($name);
+        if($value instanceof XmlBranch) $value->tag = $name;
+        $this->content[$name][0] = $value;
+    }
+
+    /**
+     * @param string $name
+     * @return XmlBranch|null
+     */
+    public function _isset($name)
     {
         if (is_array($this->content))
-            return $this->content[$name];
+            return !empty($this->content[$name]);
         else return null;
+    }
+
+    public function _unset($name)
+    {
+        if (is_array($this->content) && isset($this->content[$name]))
+            unset($this->content[$name]);
     }
 
     /**
@@ -118,6 +156,104 @@ class XmlBranch
     public function __toString()
     {
         return $this->asXml();
+    }
+
+    public static function fromXml($xml) {
+        if(!($xml instanceof \SimpleXMLElement))
+            $xml = @simplexml_load_string(preg_replace('/(<\/?)([a-z]*?)\:/si', '$1', $xml));
+
+        $name = $xml->getName();
+
+        $class = get_called_class();
+        $branch = new $class;
+        $branch->tag = strpos($name, ':') !== false ? substr(strstr($name, ':'), 1) : $name;
+
+        foreach($xml->attributes() as $attribute)
+            $branch->attributes[$attribute->getName()] = (string)$attribute;
+
+        if(count($xml->xpath('parent::*')) != 0)
+            $namespaces = array_diff(
+                $xml->getNamespaces(),
+                current($xml->xpath('parent::*'))->getNamespaces()
+            );
+        else
+            $namespaces = $xml->getNamespaces();
+
+        foreach($namespaces as $key => $ns) {
+            $branch->attributes['xmlns'.($key == '' ? '' : ':'.$key)] = $ns;
+            $branch->_ns[] = $ns;
+        }
+
+        if(count($xml->children()) == 0) {
+            $branch->content = (string)$xml;
+        } else {
+            foreach($xml->children() as $child) {
+                $branch->addChild($class::fromXml($child));
+            }
+        }
+
+
+        return $branch;
+    }
+
+    public function xpath($path, $namespaces = []) {
+        $sxml = simplexml_load_string($this->asXml());
+
+        foreach($namespaces as $prefix => $namespace)
+            $sxml->registerXPathNamespace($prefix, $namespace);
+
+        $results = $sxml->xpath($path);
+
+        $return = [];
+        foreach($results as $result) {
+            $dom = dom_import_simplexml($result);
+            var_dump($dom->getNodePath());
+            $nodepath = explode('/', substr($dom->getNodePath(), 1));
+            array_shift($nodepath);
+            $node = $this;
+            foreach($nodepath as $chunk) {
+                preg_match('/([\w\*]+)(?:\[([0-9]+)\])?/', $chunk, $matches);
+                $name = $matches[1];
+                $no   = isset($matches[2]) ? $matches[2] - 1 : 0;
+
+                if($name == '*') {
+                    $arr = [];
+                    foreach($node->content as $childs)
+                        $arr = array_merge($arr, $childs->getArrayCopy());
+
+                    $node = $arr[$no];
+                } else
+                    $node = $node->content[$name][$no];
+            }
+
+            $return[] = $node;
+        }
+
+        return $return;
+    }
+
+    /** {@inheritdoc} */
+    public function offsetExists($offset)
+    {
+        return isset($this->attributes[$offset]);
+    }
+
+    /** {@inheritdoc} */
+    public function offsetGet($offset)
+    {
+        return $this->attributes[$offset];
+    }
+
+    /** {@inheritdoc} */
+    public function offsetSet($offset, $value)
+    {
+        $this->attributes[$offset] = $value;
+    }
+
+    /** {@inheritdoc} */
+    public function offsetUnset($offset)
+    {
+        unset($this->attributes[$offset]);
     }
 }
 

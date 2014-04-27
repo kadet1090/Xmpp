@@ -9,29 +9,15 @@
 namespace Kadet\Xmpp\Stanza\Iq;
 
 use Kadet\Utils\Property;
+use Kadet\Xmpp\Utils\XmlBranch;
 
-class Query
+class Query extends XmlBranch
 {
-    use \Kadet\Utils\Property;
-
-    public $xml;
-
-    public function __construct(\SimpleXMLElement $xml)
-    {
-        $this->xml = $xml;
-    }
-
     /**
      * @internal
      */
     public function _get_namespace()
     {
-        preg_match('/xmlns=(?:"|\')(.*?)(?:"|\')/si', $this->xml->asXML(), $match);
-        return $match[1];
-    }
-
-    public function _get($name)
-    {
-        return $this->xml->$name;
+        return $this['xmlns'];
     }
 } 

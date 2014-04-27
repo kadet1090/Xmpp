@@ -8,6 +8,9 @@
  */
 
 namespace Kadet\Xmpp\Stanza;
+use Kadet\Xmpp\Utils\XmlArray;
+use Kadet\Xmpp\Utils\XmlBranch;
+use Kadet\Xmpp\XmppClient;
 
 /**
  * Class Message
@@ -17,28 +20,37 @@ namespace Kadet\Xmpp\Stanza;
  * @property int    $timestamp Message timestamp.
  */
 class Message extends Stanza {
-    private $_body;
-    private $_timestamp;
+    /**
+ * @internal
+ */
+    public function _get_body() {
+        return isset($this->content['body'][0]) ? $this->content['body'][0]->content : null;
+    }
+
+    public function _set_body($value) {
+        if(!isset($this->content['body'])) $this->content['body'] = new XmlArray('body');
+        $this->content['body'][0] = $value;
+    }
 
     /**
      * @internal
      */
-    public function _get_body() {
-        if(!isset($this->_body)) $this->_body = (string)$this->xml->body;
-        return $this->_body;
+    public function _get_subject() {
+        return isset($this->content['subject'][0]) ? $this->content['subject'][0]->content : null;
+    }
+
+    public function _set_subject($value) {
+        if(!isset($this->content['subject'])) $this->content['subject'] = new XmlArray('subject');
+        $this->content['subject'][0] = $value;
     }
 
     /**
      * @internal
      */
     public function _get_timestamp() {
-        if(!isset($this->_timestamp)) {
-            $this->_timestamp = isset($this->xml->delay['stamp']) ?
-                strtotime($this->xml->delay['stamp']) :
-                time();
-        }
-
-        return $this->_timestamp;
+        return isset($this->delay[0]['stamp']) ?
+            strtotime($this->delay[0]['stamp']) :
+            time();
     }
 
     public function reply($content) {
@@ -48,5 +60,25 @@ class Message extends Stanza {
             $jid = $this->from;
 
         $this->_xmpp->message($jid, $content, $this->type);
+    }
+
+    public function __construct($body = null, $to = null, $type = 'chat', $from = null)
+    {
+        parent::__construct('message');
+        if($body != null) $this->body = $body;
+        if($from != null) $this->from = $from;
+        if($to != null) $this->to = $to;
+        $this->type = $type;
+    }
+
+    public static function fromXml($xml, XmppClient $client = null)
+    {
+        if (!($xml instanceof \SimpleXMLElement))
+            $xml = @simplexml_load_string($xml);
+
+        if($xml->getName() != 'message')
+            return XmlBranch::fromXml($xml);
+
+        return parent::fromXml($xml, $client);
     }
 }
