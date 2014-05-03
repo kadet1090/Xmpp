@@ -98,7 +98,7 @@ class XmlBranch implements \ArrayAccess
                     foreach ($branches as $branch)
                         $xml .= $branch;
             else
-                $xml .= $this->content;
+                $xml .= htmlspecialchars($this->content);
 
             $xml .= '</' . $this->tag . '>';
         }
