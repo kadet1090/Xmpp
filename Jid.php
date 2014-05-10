@@ -28,7 +28,7 @@ class Jid
      */
     public function __construct($name, $server = null, $resource = null)
     {
-        if (preg_match('#([^@\/\"\'\s\&\:><]+)\@([a-z_\-\.]*[a-z]{2,3})(\/[^@\/\&\:><]*)?#si', $name, $matches)) {
+        if (preg_match('#([^@\/\"\'\s\&\:><]+)\@([a-z_\-\.]*[a-z]{2,3})(\/[^@\&\:><]*)?#si', $name, $matches)) {
             $this->name = $matches[1];
             $this->resource = isset($matches[3]) ? substr($matches[3], 1) : null;
             $this->server = $matches[2];
@@ -68,7 +68,7 @@ class Jid
     public function fromChannel()
     {
         return preg_match(
-            '/^[^@\/\\\"\'\s\&\:><]+@(conference|chat|irc)\.[a-z\_\-\.]*\.[a-z]{2,3}\/[^@\/\&\:><]*?$/',
+            '/^[^@\/\\\"\'\s\&\:><]+@(conference|chat|irc)\.[a-z\_\-\.]*\.[a-z]{2,3}\/[^@\&\:><]*?$/',
             $this->__toString()
         );
     }
@@ -76,6 +76,6 @@ class Jid
     static public function isJid($jid)
     {
         if($jid instanceof Jid) return true;
-        return preg_match('#([^@\/\"\'\s\&\:><]+)\@([a-z_\-\.]*[a-z]{2,3})(\/[^@\/\&\:><]*)?#si', $jid);
+        return preg_match('#([^@\/\"\'\s\&\:><]+)\@([a-z_\-\.]*[a-z]{2,3})(\/[^@\&\:><]*)?#si', $jid);
     }
 }

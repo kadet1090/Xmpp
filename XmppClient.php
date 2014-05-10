@@ -94,6 +94,7 @@ class XmppClient extends SocketClient
      * @event-arg Room       $room
      * @event-arg User       $user
      * @event-arg bool       $afterBroadcast
+     * @event-arg Presence   $presence
      *
      * @var \Kadet\Utils\Event
      */
@@ -105,6 +106,7 @@ class XmppClient extends SocketClient
      * @event-arg XmppClient $client
      * @event-arg Room       $room
      * @event-arg User       $user
+     * @event-arg Presence   $presence
      *
      * @var \Kadet\Utils\Event
      */
@@ -150,6 +152,20 @@ class XmppClient extends SocketClient
      * @var \Kadet\Utils\Event
      */
     public $onPacket;
+
+    /**
+     * Event fired when user on MUC changes nick
+     *
+     * @event-arg XmppClient $client
+     * @event-arg Room       $room
+     * @event-arg User       $user
+     * @event-arg Presence   $presence
+     * @event-arg string     $oldNick
+     * @event-arg string     $newNick
+     *
+     * @var \Kadet\Utils\Event
+     */
+    public $onNickChange;
 
     /**
      * @var array Array with expected stanzas.
@@ -233,6 +249,7 @@ class XmppClient extends SocketClient
         $this->onTls        = new Event();
         $this->onRoomJoin   = new Event();
         $this->onRoomLeave  = new Event();
+        $this->onNickChange = new Event();
 
         $this->roster = new Roster($this);
 
@@ -635,17 +652,54 @@ class XmppClient extends SocketClient
         if (!$jid->isChannel()) return;
 
         if ($packet->type != 'unavailable') {
-            $user = $this->rooms[$channelJid]->addUser(User::fromPresence($packet, $this));
-            if (
-                $user->jid->bare() == $this->jid->bare() ||
-                $this->rooms[$channelJid]->nick == $packet->from->resource
-            ) $user->self = true;
+            if(isset($this->rooms[$channelJid]->users[$packet->from->resource])) {
+                $this->rooms[$channelJid]->users[$packet->from->resource]->presence = $packet;
+            } else {
+                $user = $this->rooms[$channelJid]->addUser(User::fromPresence($packet, $this));
+                if (
+                    (string)$user->jid == (string)$this->jid ||
+                    $this->rooms[$channelJid]->nick == $packet->from->resource
+                ) $user->self = true;
 
-            $this->onJoin->run($this, $this->rooms[$channelJid], $user, $this->rooms[$channelJid]->subject === false);
+                $this->onJoin->run(
+                    $this,
+                    $this->rooms[$channelJid],
+                    $user,
+                    $this->rooms[$channelJid]->subject === false, // broadcast
+                    $packet
+                );
+
+            }
         } elseif (isset($this->rooms[$channelJid])) {
-            $user = $this->rooms[$channelJid]->users[$packet->from->resource];
-            $this->onLeave->run($this, $this->rooms[$channelJid], $user);
-            $this->rooms[$channelJid]->removeUser($user);
+            $item = $packet->xpath('//user:item', ['user' => 'http://jabber.org/protocol/muc#user']);
+
+            if(!isset($item[0])) return;
+            $item = $item[0];
+
+            // Nickname change
+            if($packet->xpath('//user:status[@code="303"]', ['user' => 'http://jabber.org/protocol/muc#user'])) {
+                $nick = [
+                    'old' => $packet->from->resource,
+                    'new' => $item['nick']
+                ];
+
+                $user = $this->rooms[$channelJid]->users[$nick['new']] = $this->rooms[$channelJid]->users[$nick['old']];
+                unset($this->rooms[$channelJid]->users[$nick['old']]);
+                $user->nick = $nick['new'];
+
+                $this->onNickChange->run(
+                    $this,
+                    $this->rooms[$channelJid],
+                    $user,
+                    $packet,
+                    $nick['old'],
+                    $nick['new']
+                );
+            } else {
+                $user = $this->rooms[$channelJid]->users[$packet->from->resource];
+                $this->onLeave->run($this, $this->rooms[$channelJid], $user, $packet);
+                $this->rooms[$channelJid]->removeUser($user);
+            }
         }
     }
 

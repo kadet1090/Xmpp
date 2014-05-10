@@ -2,10 +2,23 @@
 namespace Kadet\Xmpp;
 
 
+use Kadet\Utils\Property;
 use Kadet\Xmpp\Stanza\Presence;
 
+/**
+ * Class User
+ *
+ * @property-read string $affiliation Users affiliation on room (outcast, none, member, admin, owner)
+ * @property-read string $role        Users role on room (visitor, none, participant, moderator)
+ * @property-read string $show        Users show status, available, away, dnd, xa (extended away), unavailable
+ * @property-read string $status      Users text status message
+ *
+ * @package Kadet\Xmpp
+ */
 class User
 {
+    use Property;
+
     /**
      * Users nick on room.
      * MUC ONLY
@@ -13,19 +26,6 @@ class User
      */
     public $nick;
 
-    /**
-     * Users affiliation on room (outcast, none, member, admin, owner)
-     * MUC ONLY
-     * @var string
-     */
-    public $affiliation;
-
-    /**
-     * Users role on room (visitor, none, participant, moderator)
-     * MUC ONLY
-     * @var string
-     */
-    public $role;
 
     /**
      * Users jid
@@ -34,28 +34,17 @@ class User
     public $jid;
 
     /**
-     * Users show status, available, away, dnd, xa (extended away), unavailable
-     * @var string
-     */
-    public $show;
-
-    /**
-     * Users status (description)
-     * @var string
-     */
-    public $status;
-
-    /**
-     * Users chat room.
-     * @var Room
-     */
-    public $room;
-
-    /**
      * Indicates if this user is our client.
      * @var bool
      */
     public $self;
+
+    /**
+     * Last presence from user.
+     *
+     * @var Presence
+     */
+    public $presence;
 
     /**
      * Xmpp Client instance.
@@ -63,6 +52,26 @@ class User
      * @var XmppClient
      */
     private $_client;
+
+    public function _get_status()
+    {
+        return $this->presence->status;
+    }
+
+    public function _get_affiliation()
+    {
+        return $this->presence->affiliation;
+    }
+
+    public function _get_role()
+    {
+        return $this->presence->role;
+    }
+
+    public function _get_show()
+    {
+        return $this->presence->show;
+    }
 
     /**
      * @param XmppClient $client Xmpp Client instance.
@@ -86,11 +95,8 @@ class User
     {
         $user              = new User($client);
         $user->nick        = $presence->from->resource;
-        $user->affiliation = $presence->affiliation;
-        $user->role        = $presence->role;
         $user->jid         = $presence->jid;
-        $user->show        = $presence->show;
-        $user->status      = $presence->status;
+        $user->presence    = $presence;
 
         return $user;
     }
