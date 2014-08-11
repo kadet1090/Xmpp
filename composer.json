@@ -21,6 +21,9 @@
     "autoload": {
         "psr-4": {
             "Kadet\\Xmpp\\": "."
-        }
+        },
+        "files": [
+            "functions.php"
+        ]
     }
 }

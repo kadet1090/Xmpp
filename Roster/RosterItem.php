@@ -12,6 +12,7 @@ namespace Kadet\Xmpp\Roster;
 use Kadet\Utils\Property;
 use Kadet\Xmpp\Jid;
 use Kadet\Xmpp\Stanza\Presence;
+use Kadet\Xmpp\Utils\XmlArray;
 
 /**
  * Class RosterItem
@@ -126,7 +127,7 @@ class RosterItem
 
         if (!isset($xml->group)) {
             $item->_groups[] = 'default';
-        } elseif (!is_array($xml->group)) {
+        } elseif (!($xml->group instanceof XmlArray)) {
             $item->_groups[] = (string)$xml->group;
         } else {
             foreach ($xml->group as $group)

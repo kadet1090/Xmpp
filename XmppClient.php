@@ -1,17 +1,19 @@
 <?php
 namespace Kadet\Xmpp;
 
-include_once 'functions.php';
-
 use Kadet\SocketLib\SocketClient;
+use Kadet\SocketLib\Utils\Logger;
 use Kadet\Utils\Event;
 use Kadet\Utils\Timer;
+use Kadet\Xmpp\Connector\AbstractConnector;
+use Kadet\Xmpp\Connector\TcpConnector;
 use Kadet\Xmpp\Roster\Roster;
 use Kadet\Xmpp\Sasl\Mechanism;
 use Kadet\Xmpp\Sasl\SaslFactory;
 use Kadet\Xmpp\Stanza\Message;
 use Kadet\Xmpp\Stanza\Presence;
 use Kadet\Xmpp\Stanza\Stanza;
+use Kadet\Xmpp\Stream\AbstractStream;
 use Kadet\Xmpp\Utils\XmlBranch;
 
 /**
@@ -20,7 +22,7 @@ use Kadet\Xmpp\Utils\XmlBranch;
  * @package Kadet\Xmpp
  * @author  Kadet <kadet1090@gmail.com>
  */
-class XmppClient extends SocketClient
+class XmppClient
 {
     /**
      * Event fired when authorization process ends.
@@ -31,7 +33,6 @@ class XmppClient extends SocketClient
      * @var \Kadet\Utils\Event
      */
     public $onAuth;
-
     /**
      * Event fired when stream is opened and ready to accept data.
      *
@@ -40,14 +41,12 @@ class XmppClient extends SocketClient
      * @var \Kadet\Utils\Event
      */
     public $onStreamOpen;
-
     /**
      * Event fired when bot is ready (stream is opened, client is successfully authed and session is registered)
      *
      * @var \Kadet\Utils\Event
      */
     public $onReady;
-
     /**
      * Event fired on every loop tick.
      *
@@ -56,7 +55,6 @@ class XmppClient extends SocketClient
      * @var \Kadet\Utils\Event
      */
     public $onTick;
-
     /**
      * Event fired when presence packet came.
      *
@@ -66,7 +64,6 @@ class XmppClient extends SocketClient
      * @var \Kadet\Utils\Event
      */
     public $onPresence;
-
     /**
      * Event fired when iq packet came.
      *
@@ -76,7 +73,6 @@ class XmppClient extends SocketClient
      * @var \Kadet\Utils\Event
      */
     public $onIq;
-
     /**
      * Event fired when message packet came.
      *
@@ -86,7 +82,6 @@ class XmppClient extends SocketClient
      * @var \Kadet\Utils\Event
      */
     public $onMessage;
-
     /**
      * Event fired when user joins to room.
      *
@@ -99,7 +94,6 @@ class XmppClient extends SocketClient
      * @var \Kadet\Utils\Event
      */
     public $onJoin;
-
     /**
      * Event fired when user leaves room.
      *
@@ -111,7 +105,6 @@ class XmppClient extends SocketClient
      * @var \Kadet\Utils\Event
      */
     public $onLeave;
-
     /**
      * Event fired when client leaves room.
      *
@@ -121,7 +114,6 @@ class XmppClient extends SocketClient
      * @var \Kadet\Utils\Event
      */
     public $onRoomLeave;
-
     /**
      * Event fired when client joins room.
      *
@@ -131,7 +123,6 @@ class XmppClient extends SocketClient
      * @var \Kadet\Utils\Event
      */
     public $onRoomJoin;
-
     /**
      * Event fired when TLS connection is established.
      *
@@ -142,7 +133,6 @@ class XmppClient extends SocketClient
      * @var \Kadet\Utils\Event
      */
     public $onTls;
-
     /**
      * Event fired when new XMPP packet comes.
      *
@@ -167,22 +157,15 @@ class XmppClient extends SocketClient
      */
     public $onNickChange;
 
-    /**
-     * @var array Array with expected stanzas.
-     */
-    private $_waiting = array();
+    public $onDisconnect;
+
+    public $onConnect;
 
     /**
-     * Stream features.
-     * @var Stanza
+     * Logger of clients events.
+     * @var Logger
      */
-    protected $_features;
-
-    /**
-     * Stream
-     * @var Stanza
-     */
-    protected $_stream;
+    public $logger;
 
     /**
      * Jabber account Jid
@@ -190,20 +173,6 @@ class XmppClient extends SocketClient
      * @var Jid
      */
     public $jid;
-
-    /**
-     * Password to jabber account.
-     *
-     * @var string
-     */
-    protected $password;
-
-    /**
-     * Mechanism used in sasl authentication
-     *
-     * @var Mechanism
-     */
-    protected $_mechanism;
 
     /**
      * If client is connected and authed is true.
@@ -221,17 +190,42 @@ class XmppClient extends SocketClient
 
     public $roster;
 
-    private $_buffer;
+    /**
+     * Stream
+     *
+     * @var AbstractConnector
+     */
+    protected $_connector;
 
     /**
-     * @param Jid    $jid      Clients JID
-     * @param string $password Account Password
-     * @param int    $port     Server port (default 5222)
-     * @param int    $timeout  Clients timeout in seconds (default 30)
+     * Password to jabber account.
+     *
+     * @var string
      */
-    public function __construct(Jid $jid, $password, $port = 5222, $timeout = 30)
+    protected $password;
+    /**
+     * Mechanism used in sasl authentication
+     *
+     * @var Mechanism
+     */
+    protected $_mechanism;
+
+    /**
+     * @var array Array with expected stanzas.
+     */
+    private $_waiting = array();
+
+    /**
+     * @param Jid                         $jid      Clients JID
+     * @param string                      $password Account Password
+     * @param Connector\AbstractConnector $connector
+     */
+    public function __construct(Jid $jid, $password, AbstractConnector $connector = null)
     {
-        parent::__construct($jid->server, $port, 'tcp', $timeout);
+        if(!$connector)
+            $connector = new TcpConnector($jid->server);
+
+        $this->_connector = $connector;
 
         $this->jid      = $jid;
         $this->password = $password;
@@ -250,15 +244,21 @@ class XmppClient extends SocketClient
         $this->onRoomJoin   = new Event();
         $this->onRoomLeave  = new Event();
         $this->onNickChange = new Event();
+        $this->onConnect    = new Event();
+        $this->onDisconnect = new Event();
 
         $this->roster = new Roster($this);
 
         $this->keepAliveTimer = new Timer(15, array($this, 'keepAliveTick'));
         $this->keepAliveTimer->stop(); // We don't want to run this before connection is finalized.
 
+        $this->_connector->onConnect->add(function($c) { $this->onConnect->run($this); });
+        $this->_connector->onReceive->add([$this, 'connector_onReceive']);
+        $this->_connector->onDisconnect->add(function($c) { $this->onDisconnect->run($this); });
+        $this->_connector->onFeatures->add([$this, 'connector_onFeatures']);
+
         $this->onConnect->add(array($this, '_onConnect'));
         $this->onAuth->add(array($this, '_onAuth'));
-        $this->onStreamOpen->add(array($this, '_onStreamOpen'));
         $this->onReady->add(array($this, '_onReady'));
         $this->onPresence->add(array($this, '_onPresence'));
         $this->onMessage->add(array($this, '_onMessage'));
@@ -268,86 +268,38 @@ class XmppClient extends SocketClient
         $this->onDisconnect->add(array($this, '_onDisconnect'));
 
         $settings = [
-            'indent' => true,
-            'input-xml' => true,
-            'output-xml' => true,
+            'indent'           => true,
+            'input-xml'        => true,
+            'output-xml'       => true,
             'drop-empty-paras' => false,
-            'wrap' => 0
+            'wrap'             => 0
         ];
 
-        $this->onSend->add(function ($socket, $packet) use ($settings) {
+        $this->_connector->onSend->add(function ($socket, $packet) use ($settings) {
             $len = strlen($packet);
 
-            if(function_exists('tidy_repair_string'))
+            if (function_exists('tidy_repair_string'))
                 $packet = trim(tidy_repair_string($packet, $settings));
 
-            if(isset($socket->logger))
-                $socket->logger->debug("Sent {length} bytes: \n{packet}", [
+            if (isset($this->logger))
+                $this->logger->debug("Sent {length} bytes: \n{packet}", [
                     'length' => $len,
                     'packet' => $packet
                 ]);
         });
 
-        $this->onReceive->add(function ($socket, $packet) use ($settings) {
+        $this->_connector->onReceive->add(function ($socket, $packet) use ($settings) {
             $len = strlen($packet);
 
-            if(function_exists('tidy_repair_string'))
+            if (function_exists('tidy_repair_string'))
                 $packet = trim(tidy_repair_string($packet, $settings));
 
-            if(isset($socket->logger))
-                $socket->logger->debug("Received {length} bytes: \n{packet}", [
+            if (isset($this->logger))
+                $this->logger->debug("Received {length} bytes: \n{packet}", [
                     'length' => $len,
                     'packet' => $packet
                 ]);
         });
-    }
-
-    public function read()
-    {
-        if (($content = stream_get_contents($this->_socket)) === false) {
-            $this->disconnect();
-            $this->raiseError();
-
-            return false;
-        }
-
-        $this->_buffer .= ($result = $content);
-
-        if (!empty($result)) {
-            $this->_parse(trim($result));
-        }
-
-        usleep(5000);
-
-        return $result;
-    }
-
-    private function _parse($xml)
-    {
-        $this->_buffer = preg_replace('/<\?xml.+\?>/', '', $this->_buffer);
-
-        if(substr($this->_buffer, 1, 13) == 'stream:stream')
-            $this->_buffer = substr_replace($this->_buffer, '</stream:stream>', strpos($this->_buffer, '>') + 1, 0);
-
-        while($packet = getCompleteXml($this->_buffer)) {
-            $this->_buffer = str_replace($packet, '', $this->_buffer);
-            $this->onReceive->run($this, $packet);
-            $this->onPacket->run($this, Stanza::fromXml($packet, $this));
-        }
-    }
-
-    /**
-     * @param string $type
-     * @param int $id
-     * @param callable $delegate
-     */
-    public function wait($type, $id, callable $delegate)
-    {
-        $this->_waiting[] = array(
-            'tag' => $type,
-            'id' => $id,
-            'delegate' => $delegate
-        );
     }
 
     /**
@@ -358,9 +310,12 @@ class XmppClient extends SocketClient
      */
     public function _onConnect(XmppClient $client)
     {
-        if($this->logger) $this->logger->info('Connected to {server}.', ['server' => $client->jid->server]);
-        $this->startStream();
-        $this->wait('features', '', array($this->onStreamOpen, 'run'));
+        if ($this->logger) $this->logger->info('Connected to {server}.', ['server' => $client->jid->server]);
+        $this->_connector->streamRestart($this->jid);
+    }
+
+    public function connector_onReceive(AbstractConnector $connector, $packet) {
+        $this->onPacket->run($this, Stanza::fromXml($packet, $this));
     }
 
     /**
@@ -377,21 +332,40 @@ class XmppClient extends SocketClient
         $this->write(XmlBranch::XML . "\n" . str_replace('/>', '>', $stream->asXml()));
     }
 
+    public function write($packet)
+    {
+        $this->_connector->send($packet);
+    }
+
+    /**
+     * @param string   $type
+     * @param int      $id
+     * @param callable $delegate
+     */
+    public function wait($type, $id, callable $delegate)
+    {
+        $this->_waiting[] = array(
+            'tag'      => $type,
+            'id'       => $id,
+            'delegate' => $delegate
+        );
+    }
+
     /**
      * Should be private, but... php sucks!
      * DO NOT RUN IT, TRUST ME.
      *
      * @internal
      */
-    public function _onStreamOpen()
+    public function connector_onFeatures($connector, $features)
     {
-        if (isset($this->_features->starttls)) {
+        if (isset($features->starttls)) {
             $this->startTls();
 
             return;
         }
 
-        if (isset($this->_features->mechanisms)) {
+        if (isset($features->mechanisms)) {
             $this->auth();
 
             return;
@@ -400,7 +374,7 @@ class XmppClient extends SocketClient
 
     private function startTls()
     {
-        if($this->logger) $this->logger->notice('Starting TLS negotiation.');
+        if ($this->logger) $this->logger->notice('Starting TLS negotiation.');
 
         $xml = new XmlBranch('starttls');
         $xml->addAttribute('xmlns', 'urn:ietf:params:xml:ns:xmpp-tls');
@@ -414,19 +388,19 @@ class XmppClient extends SocketClient
      */
     private function auth()
     {
-        if($this->logger)
+        if ($this->logger)
             $this->logger->notice('SASL Auth, available mechanisms: {mechanisms}', [
                 'mechanisms' => implode(', ', array_map(function ($item) {
                     return $item->content;
-                }, (array)$this->_features->mechanisms[0]->mechanism))
+                }, (array)$this->_connector->features->mechanisms[0]->mechanism))
             ]);
 
         $xml = new XmlBranch('auth');
         $xml->addAttribute('xmlns', 'urn:ietf:params:xml:ns:xmpp-sasl');
 
         $mechanism = null;
-        $this->_features->mechanisms[0]->mechanism->getIterator();
-        foreach ($this->_features->mechanisms[0]->mechanism as $current) {
+        $this->_connector->features->mechanisms[0]->mechanism->getIterator();
+        foreach ($this->_connector->features->mechanisms[0]->mechanism as $current) {
             if ($mechanism = SaslFactory::get($current->content, $this->jid, $this->password))
                 break;
         }
@@ -434,7 +408,7 @@ class XmppClient extends SocketClient
         if (!$mechanism)
             throw new \RuntimeException('This client is not supporting any of server auth mechanisms.');
 
-        if($this->logger)
+        if ($this->logger)
             $this->logger->notice('Chosen mechanism: {mechanism}', ['mechanism' => $current->content]);
 
         $this->_mechanism = $mechanism;
@@ -459,53 +433,13 @@ class XmppClient extends SocketClient
     {
         if ($result->xml->getName() == 'success') {
 
-            if($this->logger)
+            if ($this->logger)
                 $this->logger->info('SASL Auth successful.');
 
-            $this->startStream();
+            $this->_connector->streamRestart($this->jid);
             $this->_bind();
         } else
             throw new \RuntimeException('Authorization failed.');
-    }
-
-    /**
-     * Should be private, but... php sucks!
-     * DO NOT RUN IT, TRUST ME.
-     *
-     * @param Stanza $packet
-     *
-     * @internal
-     */
-    public function _onChallenge($packet)
-    {
-        $xml = new XmlBranch('response');
-        $xml->addAttribute('xmlns', 'urn:ietf:params:xml:ns:xmpp-sasl');
-        $xml->setContent(base64_encode($this->_mechanism->challenge($packet)));
-        $this->write($xml->asXML());
-    }
-
-    /**
-     * Should be private, but... php sucks!
-     * DO NOT RUN IT, TRUST ME.
-     *
-     * @param XmppClient $client
-     * @param Stanza     $result
-     *
-     * @throws \RuntimeException
-     * @internal
-     */
-    public function _onTls(XmppClient $client, $result)
-    {
-        if ($result->tag == 'proceed') {
-            if($this->logger)
-                $this->logger->info('TLS Connection established.');
-
-            stream_set_blocking($this->_socket, true);
-            stream_socket_enable_crypto($this->_socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
-            stream_set_blocking($this->_socket, false);
-            $this->startStream();
-        } else
-            throw new \RuntimeException('Tls negotiation failed.');
     }
 
     /**
@@ -527,6 +461,28 @@ class XmppClient extends SocketClient
 
         $this->write($xml);
         $this->wait('iq', $id, array($this, '_bindResult'));
+    }
+
+    /**
+     * Should be private, but... php sucks!
+     * DO NOT RUN IT, TRUST ME.
+     *
+     * @param XmppClient $client
+     * @param Stanza     $result
+     *
+     * @throws \RuntimeException
+     * @internal
+     */
+    public function _onTls(XmppClient $client, $result)
+    {
+        if ($result->tag == 'proceed') {
+            if ($this->logger)
+                $this->logger->info('TLS Connection established.');
+
+            $this->_connector->startTls();
+            $this->_connector->streamRestart($this->jid);
+        } else
+            throw new \RuntimeException('Tls negotiation failed.');
     }
 
     /**
@@ -572,6 +528,26 @@ class XmppClient extends SocketClient
     }
 
     /**
+     * Changes client status on server.
+     *
+     * @param string $show   New show status for client, one of these:
+     *                       chat, available, away, xa, dnd, unavailable.
+     *                       (default available)
+     * @param string $status Additional text status.
+     */
+    public function presence($show = "available", $status = "")
+    {
+        $xml = new xmlBranch("presence");
+        $xml->addAttribute("from", $this->jid->__toString())
+            ->addAttribute("id", uniqid());
+        $xml->addChild(new xmlBranch("show"))->setContent($show);
+        $xml->addChild(new xmlBranch("status"))->setContent($status);
+        $xml->addChild(new xmlBranch("priority"))->setContent(50);
+
+        $this->write($xml->asXml());
+    }
+
+    /**
      * Should be private, but... php sucks!
      * DO NOT RUN IT, TRUST ME.
      *
@@ -611,14 +587,6 @@ class XmppClient extends SocketClient
                 $this->onMessage->run($this, $stanza);
                 break;
 
-            case 'features':
-                $this->_features = $stanza;
-                break;
-
-            case 'stream':
-                $this->_stream = $stanza;
-                break;
-
             # SASL
             case 'success':
             case 'failure':
@@ -639,6 +607,22 @@ class XmppClient extends SocketClient
      * Should be private, but... php sucks!
      * DO NOT RUN IT, TRUST ME.
      *
+     * @param Stanza $packet
+     *
+     * @internal
+     */
+    public function _onChallenge($packet)
+    {
+        $xml = new XmlBranch('response');
+        $xml->addAttribute('xmlns', 'urn:ietf:params:xml:ns:xmpp-sasl');
+        $xml->setContent(base64_encode($this->_mechanism->challenge($packet)));
+        $this->write($xml->asXML());
+    }
+
+    /**
+     * Should be private, but... php sucks!
+     * DO NOT RUN IT, TRUST ME.
+     *
      * @param XmppClient $client
      * @param Presence   $packet
      *
@@ -652,7 +636,7 @@ class XmppClient extends SocketClient
         if (!$jid->isChannel()) return;
 
         if ($packet->type != 'unavailable') {
-            if(isset($this->rooms[$channelJid]->users[$packet->from->resource])) {
+            if (isset($this->rooms[$channelJid]->users[$packet->from->resource])) {
                 $this->rooms[$channelJid]->users[$packet->from->resource]->presence = $packet;
             } else {
                 $user = $this->rooms[$channelJid]->addUser(User::fromPresence($packet, $this));
@@ -673,11 +657,11 @@ class XmppClient extends SocketClient
         } elseif (isset($this->rooms[$channelJid])) {
             $item = $packet->xpath('//user:item', ['user' => 'http://jabber.org/protocol/muc#user']);
 
-            if(!isset($item[0])) return;
+            if (!isset($item[0])) return;
             $item = $item[0];
 
             // Nickname change
-            if($packet->xpath('//user:status[@code="303"]', ['user' => 'http://jabber.org/protocol/muc#user'])) {
+            if ($packet->xpath('//user:status[@code="303"]', ['user' => 'http://jabber.org/protocol/muc#user'])) {
                 $nick = [
                     'old' => $packet->from->resource,
                     'new' => $item['nick']
@@ -732,17 +716,15 @@ class XmppClient extends SocketClient
             $this->onTick->run($this);
 
         Timer::update();
-        $this->read();
+        $this->_connector->read();
     }
 
     /**
      * Connects client to the server.
-     *
-     * @param bool $blocking If set to true client is blocked before any packet came.
      */
-    public function connect($blocking = false)
+    public function connect()
     {
-        parent::connect($blocking);
+        $this->_connector->connect();
     }
 
     /**
@@ -778,26 +760,6 @@ class XmppClient extends SocketClient
             ->addAttribute('type', $type);
         $msg->addChild(new XmlBranch('body'))->setContent($message);
         $this->write($msg->asXml());
-    }
-
-    /**
-     * Changes client status on server.
-     *
-     * @param string $show   New show status for client, one of these:
-     *                       chat, available, away, xa, dnd, unavailable.
-     *                       (default available)
-     * @param string $status Additional text status.
-     */
-    public function presence($show = "available", $status = "")
-    {
-        $xml = new xmlBranch("presence");
-        $xml->addAttribute("from", $this->jid->__toString())
-            ->addAttribute("id", uniqid());
-        $xml->addChild(new xmlBranch("show"))->setContent($show);
-        $xml->addChild(new xmlBranch("status"))->setContent($status);
-        $xml->addChild(new xmlBranch("priority"))->setContent(50);
-
-        $this->write($xml->asXml());
     }
 
     /**
@@ -866,6 +828,7 @@ class XmppClient extends SocketClient
 
         $this->rooms[$room->__toString()] = new Room($this, $room, $nick);
         $this->onRoomJoin->run($this, $this->rooms[$room->__toString()]);
+
         return $this->rooms[$room->__toString()];
     }
 
@@ -1021,15 +984,9 @@ class XmppClient extends SocketClient
      */
     public function _handleExpected(XmppClient $client, Stanza $packet)
     {
-        $name = $packet->tag;
-        if ($name == 'features')
-            $this->_features = $packet;
-        elseif ($name == 'stream')
-            $this->_stream = $packet;
-
         foreach ($this->_waiting as &$wait) {
             if (
-                (empty($wait['tag']) || $name == $wait['tag']) &&
+                (empty($wait['tag']) || $packet->tag == $wait['tag']) &&
                 (empty($wait['id']) || $packet->id == $wait['id'])
             ) {
                 $wait['delegate']($packet);
@@ -1038,15 +995,10 @@ class XmppClient extends SocketClient
     }
 
     /**
-     * @param SocketClient $socket
-     *
      * @internal
      */
-    public function _onDisconnect(SocketClient $socket)
+    public function _onDisconnect()
     {
-        $socket->send('</stream:stream>');
         $this->logger->info('Disconnected.');
     }
-
-    public function write($packet) { $this->send($packet); }
 }

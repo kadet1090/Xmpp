@@ -158,6 +158,11 @@ class XmlBranch implements \ArrayAccess
         return $this->asXml();
     }
 
+    /**
+     * @param $xml
+     *
+     * @return XmlBranch
+     */
     public static function fromXml($xml) {
         if(!($xml instanceof \SimpleXMLElement))
             $xml = @simplexml_load_string(preg_replace('/(<\/?)([a-z]*?)\:/si', '$1', $xml));
