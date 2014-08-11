@@ -65,12 +65,18 @@ class Roster implements \ArrayAccess, \IteratorAggregate
                 return;
             case 'set':
             case 'result':
+                if(!isset($iq->query->item)) {
+                    $client->logger->info('Received empty roster.');
+                    return;
+                }
+
                 foreach ($iq->query->item as $item)
                     $changed[] = $this->fromXml($item);
 
                 break;
         }
 
+        $client->logger->info('Received {count} roster items.', ['count' => count($changed)]);
         $this->onComplete->run($this, $changed);
     }
 
