@@ -9,7 +9,7 @@
 namespace Kadet\Xmpp\Stanza\Iq;
 
 use Kadet\Utils\Property;
-use Kadet\Xmpp\Utils\XmlBranch;
+use Kadet\Xmpp\Xml\XmlBranch;
 
 class Query extends XmlBranch
 {

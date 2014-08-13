@@ -1,11 +1,13 @@
 <?php
-namespace Kadet\Xmpp\Utils;
+namespace Kadet\Xmpp\Xml;
 
 use Kadet\Utils\Property;
 
 class XmlBranch implements \ArrayAccess
 {
     const XML = '<?xml version="1.0" encoding="utf-8"?>';
+
+    public static $bind = [];
 
     use Property;
 
@@ -35,6 +37,10 @@ class XmlBranch implements \ArrayAccess
     public function __construct($tag = '')
     {
         $this->tag = $tag;
+    }
+
+    public function getNamespace($ns = '') {
+        return $this->_ns[$ns];
     }
 
     /**
@@ -169,7 +175,20 @@ class XmlBranch implements \ArrayAccess
 
         $name = $xml->getName();
 
-        $class = get_called_class();
+        $name = $xml->getName();
+        $name = strpos($name, ':') !== false ? substr(strstr($name, ':'), 1) : $name; // > SimpleXML
+        $ns   = $xml->getNamespaces();
+        $ns   = isset($ms['']) ? $ns[''] : null;
+
+        if(isset(self::$bind["{$ns}/{$name}"]))
+            $class = self::$bind["{$ns}/{$name}"];
+        elseif(isset(self::$bind["{$name}"]))
+            $class = self::$bind["{$name}"];
+        elseif(isset(self::$bind["{$ns}"]))
+            $class = self::$bind["{$ns}"];
+        else
+            $class = get_called_class();
+
         $branch = new $class;
         $branch->tag = strpos($name, ':') !== false ? substr(strstr($name, ':'), 1) : $name;
 
@@ -184,19 +203,18 @@ class XmlBranch implements \ArrayAccess
         else
             $namespaces = $xml->getNamespaces();
 
+        $branch->_ns = $xml->getNamespaces();
         foreach($namespaces as $key => $ns) {
             $branch->attributes['xmlns'.($key == '' ? '' : ':'.$key)] = $ns;
-            $branch->_ns[] = $ns;
         }
 
         if(count($xml->children()) == 0) {
             $branch->content = (string)$xml;
         } else {
             foreach($xml->children() as $child) {
-                $branch->addChild($class::fromXml($child));
+                $branch->addChild(self::fromXml($child));
             }
         }
-
 
         return $branch;
     }

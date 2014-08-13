@@ -13,7 +13,7 @@ use Kadet\Utils\Event;
 use Kadet\Utils\Logger;
 use Kadet\Utils\Property;
 use Kadet\Xmpp\Stanza\Presence;
-use Kadet\Xmpp\Utils\XmlBranch;
+use Kadet\Xmpp\Xml\XmlBranch;
 use Kadet\Xmpp\Jid;
 use Kadet\Xmpp\Stanza\Iq;
 use Kadet\Xmpp\XmppClient;

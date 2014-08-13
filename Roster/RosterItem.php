@@ -12,7 +12,7 @@ namespace Kadet\Xmpp\Roster;
 use Kadet\Utils\Property;
 use Kadet\Xmpp\Jid;
 use Kadet\Xmpp\Stanza\Presence;
-use Kadet\Xmpp\Utils\XmlArray;
+use Kadet\Xmpp\Xml\XmlArray;
 
 /**
  * Class RosterItem

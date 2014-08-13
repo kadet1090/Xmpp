@@ -17,7 +17,7 @@ namespace Kadet\Xmpp\Connector;
 
 use Kadet\Utils\Event;
 use Kadet\Utils\Property;
-use Kadet\Xmpp\Utils\XmlBranch;
+use Kadet\Xmpp\Xml\XmlBranch;
 
 /**
  * Class AbstractConnector

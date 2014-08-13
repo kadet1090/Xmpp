@@ -10,8 +10,8 @@
 namespace Kadet\Xmpp\Stanza;
 
 use Kadet\Xmpp\Stanza\Iq\Query;
-use Kadet\Xmpp\Utils\XmlArray;
-use Kadet\Xmpp\Utils\XmlBranch;
+use Kadet\Xmpp\Xml\XmlArray;
+use Kadet\Xmpp\Xml\XmlBranch;
 use Kadet\Xmpp\XmppClient;
 
 /**
@@ -37,7 +37,7 @@ class Iq extends Stanza {
         $this->query[0] = $value;
     }
 
-    public static function fromXml($xml, XmppClient $client = null)
+    /*public static function fromXml($xml, XmppClient $client = null)
     {
         if (!($xml instanceof \SimpleXMLElement))
             $xml = @simplexml_load_string($xml);
@@ -48,5 +48,5 @@ class Iq extends Stanza {
             return Query::fromXml($xml);
 
         return XmlBranch::fromXml($xml);
-    }
+    }*/
 }

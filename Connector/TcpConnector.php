@@ -16,7 +16,7 @@ namespace Kadet\Xmpp\Connector;
 
 use Kadet\SocketLib\SocketClient;
 use Kadet\Xmpp\Stanza\Stanza;
-use Kadet\Xmpp\Utils\XmlBranch;
+use Kadet\Xmpp\Xml\XmlBranch;
 
 class TcpConnector extends AbstractConnector {
     /** @var string */

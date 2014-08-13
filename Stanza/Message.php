@@ -8,8 +8,8 @@
  */
 
 namespace Kadet\Xmpp\Stanza;
-use Kadet\Xmpp\Utils\XmlArray;
-use Kadet\Xmpp\Utils\XmlBranch;
+use Kadet\Xmpp\Xml\XmlArray;
+use Kadet\Xmpp\Xml\XmlBranch;
 use Kadet\Xmpp\XmppClient;
 
 /**
@@ -21,8 +21,8 @@ use Kadet\Xmpp\XmppClient;
  */
 class Message extends Stanza {
     /**
- * @internal
- */
+     * @internal
+     */
     public function _get_body() {
         return isset($this->content['body'][0]) ? $this->content['body'][0]->content : null;
     }
@@ -71,7 +71,7 @@ class Message extends Stanza {
         $this->type = $type;
     }
 
-    public static function fromXml($xml, XmppClient $client = null)
+    /*public static function fromXml($xml, XmppClient $client = null)
     {
         if (!($xml instanceof \SimpleXMLElement))
             $xml = @simplexml_load_string($xml);
@@ -80,5 +80,5 @@ class Message extends Stanza {
             return XmlBranch::fromXml($xml);
 
         return parent::fromXml($xml, $client);
-    }
+    }*/
 }

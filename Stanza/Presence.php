@@ -10,8 +10,8 @@
 namespace Kadet\Xmpp\Stanza;
 
 use Kadet\Xmpp\Jid;
-use Kadet\Xmpp\Utils\XmlArray;
-use Kadet\Xmpp\Utils\XmlBranch;
+use Kadet\Xmpp\Xml\XmlArray;
+use Kadet\Xmpp\Xml\XmlBranch;
 use Kadet\Xmpp\XmppClient;
 
 /**
@@ -164,7 +164,7 @@ class Presence extends Stanza
         return $this->_jid;
     }
 
-    public static function fromXml($xml, XmppClient $client = null)
+    /*public static function fromXml($xml, XmppClient $client = null)
     {
         if (!($xml instanceof \SimpleXMLElement))
             $xml = @simplexml_load_string($xml);
@@ -174,7 +174,7 @@ class Presence extends Stanza
 
         return parent::fromXml($xml, $client);
     }
-
+*/
     public function __construct($show = null, $status = null, $priority = null) {
         $this->tag = 'presence';
         if(isset($show)) $this->show = $show;

@@ -11,7 +11,7 @@
  * From Kadet with love.
  */
 
-namespace Kadet\Xmpp\Utils;
+namespace Kadet\Xmpp\Xml;
 
 final class XmlArray extends \ArrayObject {
     private $_tag;

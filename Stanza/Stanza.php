@@ -11,7 +11,7 @@ namespace Kadet\Xmpp\Stanza;
 use Kadet\Utils\Property;
 use Kadet\Xmpp\Jid;
 use Kadet\Xmpp\User;
-use Kadet\Xmpp\Utils\XmlBranch;
+use Kadet\Xmpp\Xml\XmlBranch;
 use Kadet\Xmpp\XmppClient;
 
 /**
@@ -140,30 +140,10 @@ class Stanza extends XmlBranch
         if (!($xml instanceof \SimpleXMLElement))
             $xml = @simplexml_load_string(preg_replace('/(<\/?)([a-z]*?)\:/si', '$1', $xml));
 
-        if (get_called_class() != __CLASS__) {
-            $stanza        = parent::fromXml($xml);
-            $stanza->_xmpp = $client;
-            $stanza->xml   = $xml;
+        $stanza        = parent::fromXml($xml);
+        $stanza->_xmpp = $client;
+        $stanza->xml   = $xml;
 
-            return $stanza;
-        }
-
-        $name = $xml->getName();
-        $name = strpos($name, ':') !== false ? substr(strstr($name, ':'), 1) : $name; // > SimpleXML
-
-        switch ($name) {
-            case 'iq':
-                return Iq::fromXml($xml, $client);
-            case 'presence':
-                return Presence::fromXml($xml, $client);
-            case 'message':
-                return Message::fromXml($xml, $client);
-            default:
-                $stanza        = parent::fromXml($xml);
-                $stanza->_xmpp = $client;
-                $stanza->xml   = $xml;
-
-                return $stanza;
-        }
+        return $stanza;
     }
 }

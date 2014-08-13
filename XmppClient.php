@@ -14,7 +14,7 @@ use Kadet\Xmpp\Stanza\Message;
 use Kadet\Xmpp\Stanza\Presence;
 use Kadet\Xmpp\Stanza\Stanza;
 use Kadet\Xmpp\Stream\AbstractStream;
-use Kadet\Xmpp\Utils\XmlBranch;
+use Kadet\Xmpp\Xml\XmlBranch;
 
 /**
  * XmppClient class provides basic XMPP/Jabber functionality.
@@ -300,6 +300,11 @@ class XmppClient
                     'packet' => $packet
                 ]);
         });
+
+        XmlBranch::$bind['iq']       = 'Kadet\\Xmpp\\Stanza\\Iq';
+        XmlBranch::$bind['presence'] = 'Kadet\\Xmpp\\Stanza\\Presence';
+        XmlBranch::$bind['message']  = 'Kadet\\Xmpp\\Stanza\\Message';
+        XmlBranch::$bind['query']    = 'Kadet\\Xmpp\\Stanza\\Iq\\Query';
     }
 
     /**
