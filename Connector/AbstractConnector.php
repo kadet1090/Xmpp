@@ -36,7 +36,6 @@ abstract class AbstractConnector
      * @event(AbstractConnector $connector, XmlBranch $packet)
      */
     public $onSend;
-
     /**
      * @var Event
      * @event(AbstractConnector $connector, XmlBranch $packet)
@@ -66,7 +65,12 @@ abstract class AbstractConnector
      * @var Event
      * @event(AbstractConnector $connector, XmlBranch $error)
      */
-    public $onError;
+    public $onStreamError;
+    /**
+     * @var Event
+     * @event(AbstractConnector $connector, ConnectionException $e)
+     */
+    public $onConnectionError;
     /**
      * @var Event
      * @event(AbstractConnector $connector, XmlBranch $features)
@@ -81,7 +85,7 @@ abstract class AbstractConnector
         $this->onDisconnect = new Event();
         $this->onOpen       = new Event();
         $this->onClose      = new Event();
-        $this->onError      = new Event();
+        $this->onStreamError      = new Event();
         $this->onFeatures   = new Event();
     }
 

@@ -1,7 +1,6 @@
 <?php
 namespace Kadet\Xmpp;
 
-use Kadet\SocketLib\SocketClient;
 use Kadet\SocketLib\Utils\Logger;
 use Kadet\Utils\Event;
 use Kadet\Utils\Timer;
@@ -13,7 +12,6 @@ use Kadet\Xmpp\Sasl\SaslFactory;
 use Kadet\Xmpp\Stanza\Message;
 use Kadet\Xmpp\Stanza\Presence;
 use Kadet\Xmpp\Stanza\Stanza;
-use Kadet\Xmpp\Stream\AbstractStream;
 use Kadet\Xmpp\Xml\XmlBranch;
 
 /**
@@ -27,118 +25,91 @@ class XmppClient
     /**
      * Event fired when authorization process ends.
      *
-     * @event-arg XmppClient        $client
-     * @event-arg \SimpleXMLElement $packet
-     *
+     * @event(XmppClient $client, Stanza $result)
      * @var \Kadet\Utils\Event
      */
     public $onAuth;
     /**
      * Event fired when stream is opened and ready to accept data.
      *
-     * @event-arg XmppClient $client
-     *
+     * @event(XmppClient $client)
      * @var \Kadet\Utils\Event
      */
     public $onStreamOpen;
     /**
      * Event fired when bot is ready (stream is opened, client is successfully authed and session is registered)
      *
+     * @event(XmppClient $client)
      * @var \Kadet\Utils\Event
      */
     public $onReady;
     /**
      * Event fired on every loop tick.
      *
-     * @event-arg XmppClient $client
-     *
+     * @event(XmppClient $client)
      * @var \Kadet\Utils\Event
      */
     public $onTick;
     /**
      * Event fired when presence packet came.
      *
-     * @event-arg XmppClient        $client
-     * @event-arg \SimpleXMLElement $packet
-     *
+     * @event(XmppClient $client, Presence $packet)
      * @var \Kadet\Utils\Event
      */
     public $onPresence;
     /**
      * Event fired when iq packet came.
      *
-     * @event-arg XmppClient        $client
-     * @event-arg \SimpleXMLElement $packet
-     *
+     * @event(XmppClient $client, Iq $packet)
      * @var \Kadet\Utils\Event
      */
     public $onIq;
     /**
      * Event fired when message packet came.
      *
-     * @event-arg XmppClient $client
-     * @event-arg \SimpleXMLElement
-     *
+     * @event(XmppClient $client, Message $packet)
      * @var \Kadet\Utils\Event
      */
     public $onMessage;
     /**
      * Event fired when user joins to room.
      *
-     * @event-arg XmppClient $client
-     * @event-arg Room       $room
-     * @event-arg User       $user
-     * @event-arg bool       $afterBroadcast
-     * @event-arg Presence   $presence
-     *
+     * @event(XmppClient $client, Room $room, User $user, bool $broadcast, Presence $presence)
      * @var \Kadet\Utils\Event
      */
     public $onJoin;
     /**
      * Event fired when user leaves room.
      *
-     * @event-arg XmppClient $client
-     * @event-arg Room       $room
-     * @event-arg User       $user
-     * @event-arg Presence   $presence
-     *
+     * @event(XmppClient $client, Room $room, User $user, Presence $presence)
      * @var \Kadet\Utils\Event
      */
     public $onLeave;
     /**
      * Event fired when client leaves room.
      *
-     * @event-arg XmppClient $client
-     * @event-arg Room       $room
-     *
+     * @event(XmppClient $client, Room $room)
      * @var \Kadet\Utils\Event
      */
     public $onRoomLeave;
     /**
      * Event fired when client joins room.
      *
-     * @event-arg XmppClient $client
-     * @event-arg Room       $room
-     *
+     * @event(XmppClient $client, Room $room)
      * @var \Kadet\Utils\Event
      */
     public $onRoomJoin;
     /**
      * Event fired when TLS connection is established.
      *
-     * @event-arg XmppClient $client
-     * @event-arg Room       $room
-     * @event-arg User       $user
-     *
+     * @event(XmppClient $client)
      * @var \Kadet\Utils\Event
      */
     public $onTls;
     /**
      * Event fired when new XMPP packet comes.
      *
-     * @event-arg XmppClient $client
-     * @event-arg Stanza     $packet
-     *
+     * @event(XmppClient $client, Stanza $result)
      * @var \Kadet\Utils\Event
      */
     public $onPacket;
@@ -146,19 +117,25 @@ class XmppClient
     /**
      * Event fired when user on MUC changes nick
      *
-     * @event-arg XmppClient $client
-     * @event-arg Room       $room
-     * @event-arg User       $user
-     * @event-arg Presence   $presence
-     * @event-arg string     $oldNick
-     * @event-arg string     $newNick
-     *
+     * @event(XmppClient $client, Room $room, User $user, Presence $presence, string $old, string $new)
      * @var \Kadet\Utils\Event
      */
     public $onNickChange;
 
+    /**
+     * Event fired when client loses connection to server.
+     *
+     * @event(XmppClient $client)
+     * @var \Kadet\Utils\Event
+     */
     public $onDisconnect;
 
+    /**
+     * Event fired when client established connection to server.
+     *
+     * @event(XmppClient $client)
+     * @var \Kadet\Utils\Event
+     */
     public $onConnect;
 
     /**
@@ -253,8 +230,9 @@ class XmppClient
         $this->keepAliveTimer->stop(); // We don't want to run this before connection is finalized.
 
         $this->_connector->onConnect->add(function($c) { $this->onConnect->run($this); });
-        $this->_connector->onReceive->add([$this, 'connector_onReceive']);
         $this->_connector->onDisconnect->add(function($c) { $this->onDisconnect->run($this); });
+
+        $this->_connector->onReceive->add([$this, 'connector_onReceive']);
         $this->_connector->onFeatures->add([$this, 'connector_onFeatures']);
 
         $this->onConnect->add(array($this, '_onConnect'));

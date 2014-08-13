@@ -14,6 +14,7 @@
 namespace Kadet\Xmpp\Connector;
 
 
+use Kadet\SocketLib\NetworkException;
 use Kadet\SocketLib\SocketClient;
 use Kadet\Xmpp\Stanza\Stanza;
 use Kadet\Xmpp\Xml\XmlBranch;
@@ -71,7 +72,13 @@ class TcpConnector extends AbstractConnector {
 
     public function send($packet)
     {
-        $this->_connection->send($packet);
+        try {
+            $this->_connection->send($packet);
+        } catch (NetworkException $e) {
+            $exception = new ConnectionException($e->getMessage(), $e->getCode(), $e);
+            $this->onConnectionError->run($this, $exception);
+            throw $exception;
+        }
         $this->onSend->run($this, $packet);
     }
 
@@ -108,6 +115,9 @@ class TcpConnector extends AbstractConnector {
                     $this->_info = (object)$packet->attributes;
                     $this->onOpen->run($this, $this->_info);
                     break;
+                case "error":
+                    $this->onStreamError->run($this, $packet);
+                    break;
                 case "features":
                     $this->_features = Stanza::fromXml($xml);
                     $this->onFeatures->run($this, $this->_features);
@@ -122,6 +132,9 @@ class TcpConnector extends AbstractConnector {
 
         if (substr($this->_buffer, 1, 13) == 'stream:stream')
             $this->_buffer = substr_replace($this->_buffer, '</stream:stream>', strpos($this->_buffer, '>') + 1, 0);
+
+        if(strstr($this->_buffer, '</stream:stream>'))
+            $this->onClose->run($this);
 
         while ($packet = getCompleteXml($this->_buffer)) {
             $this->_buffer = str_replace($packet, '', $this->_buffer);
