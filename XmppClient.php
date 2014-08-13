@@ -301,20 +301,6 @@ class XmppClient
         $this->onPacket->run($this, Stanza::fromXml($packet, $this));
     }
 
-    /**
-     * Starts stream
-     */
-    private function startStream()
-    {
-        $stream = new XmlBranch('stream:stream');
-        $stream
-            ->addAttribute('to', $this->jid->server)
-            ->addAttribute('xmlns', 'jabber:client')
-            ->addAttribute('version', '1.0')
-            ->addAttribute('xmlns:stream', 'http://etherx.jabber.org/streams');
-        $this->write(XmlBranch::XML . "\n" . str_replace('/>', '>', $stream->asXml()));
-    }
-
     public function write($packet)
     {
         $this->_connector->send($packet);
