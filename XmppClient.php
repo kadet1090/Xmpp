@@ -303,7 +303,7 @@ class XmppClient
 
     public function write($packet)
     {
-        $this->_connector->send($packet);
+        $this->_connector->send($packet instanceof XmlBranch ? $packet->asXml() : (string)$packet);
     }
 
     /**

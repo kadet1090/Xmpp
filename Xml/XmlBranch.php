@@ -102,7 +102,7 @@ class XmlBranch implements \ArrayAccess
             if (is_array($this->content))
                 foreach ($this->content as $branches)
                     foreach ($branches as $branch)
-                        $xml .= $branch;
+                        $xml .= $branch instanceof XmlBranch ? $branch->asXml() : (string)$branch;
             else
                 $xml .= htmlspecialchars($this->content);
 
@@ -161,7 +161,7 @@ class XmlBranch implements \ArrayAccess
      */
     public function __toString()
     {
-        return $this->asXml();
+        return strip_tags($this->asXml());
     }
 
     /**
