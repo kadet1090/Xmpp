@@ -35,6 +35,8 @@ class TcpConnector extends AbstractConnector {
     protected $_features;
     protected $_info;
 
+    private $_results;
+
     public function __construct($server, $port = 5222) {
         parent::__construct();
 
@@ -48,6 +50,13 @@ class TcpConnector extends AbstractConnector {
     {
         while(list($server, $port) = $this->_lookup()) {
             try {
+                if(isset($this->client->logger)) {
+                    $this->client->logger->debug('Trying to connect to {server} on port {port}', [
+                        'server' => $this->_server,
+                        'port' => $this->_port
+                    ]);
+                }
+
                 $this->_connection = new SocketClient($server, $port);
                 $this->_connection->connect(false);
                 $this->_connection->send(XmlBranch::XML . "\n");
@@ -76,6 +85,7 @@ class TcpConnector extends AbstractConnector {
                 'server' => $this->_server
             ]);
         }
+        reset($this->_results);
         return false;
     }
 
@@ -121,10 +131,8 @@ class TcpConnector extends AbstractConnector {
     }
 
     private function _lookup() {
-        static $results;
-
-        if(!isset($results)) {
-            $results = [];
+        if(!isset($this->_results)) {
+            $this->_results = [];
             $dns = dns_get_record('_xmpp-client._tcp.'.$this->_server, DNS_SRV);
             if(!$dns) {
                 if(isset($this->client->logger)) {
@@ -134,20 +142,18 @@ class TcpConnector extends AbstractConnector {
                     ]);
                 }
 
-                return [$this->_server, $this->_port];
+                $this->_results[] = [$this->_server, $this->_port];
             }
 
             foreach($dns as $result) {
-                $results[] = [
+                $this->_results[] = [
                     $result['target'],
                     $result['port']
                 ];
             }
-
-            return reset($results);
         }
 
-        return next($results);
+        return each($this->_results)['value'];
     }
 
     public function _onPacket($conn, $xml) {

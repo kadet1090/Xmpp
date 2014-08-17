@@ -693,7 +693,7 @@ class XmppClient
      */
     public function connect()
     {
-        $this->_connector->connect();
+        return $this->_connector->connect();
     }
 
     /**
