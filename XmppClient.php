@@ -203,6 +203,7 @@ class XmppClient
             $connector = new TcpConnector($jid->server);
 
         $this->_connector = $connector;
+        $this->_connector->client = $this;
 
         $this->jid      = $jid;
         $this->password = $password;
@@ -293,7 +294,6 @@ class XmppClient
      */
     public function _onConnect(XmppClient $client)
     {
-        if ($this->logger) $this->logger->info('Connected to {server}.', ['server' => $client->jid->server]);
         $this->_connector->streamRestart($this->jid);
     }
 

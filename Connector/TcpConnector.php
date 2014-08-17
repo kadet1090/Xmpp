@@ -46,12 +46,37 @@ class TcpConnector extends AbstractConnector {
 
     public function connect()
     {
-        $this->_lookup();
+        while(list($server, $port) = $this->_lookup()) {
+            try {
+                $this->_connection = new SocketClient($server, $port);
+                $this->_connection->connect(false);
+                $this->_connection->send(XmlBranch::XML . "\n");
+            } catch (NetworkException $e) {
+                if(isset($this->client->logger))
+                    $this->client->logger->warning('Unable to connect to {server} on port {port}', [
+                        'server' => $server,
+                        'port' => $port
+                    ]);
+                continue;
+            }
 
-        $this->_connection = new SocketClient($this->_server, $this->_port);
-        $this->_connection->connect(false);
-        $this->_connection->send(XmlBranch::XML . "\n");
-        $this->onConnect->run($this);
+            if(isset($this->client->logger)) {
+                $this->client->logger->info('Connected to {server} on port {port}', [
+                    'server' => $server,
+                    'port' => $port
+                ]);
+            }
+
+            $this->onConnect->run($this);
+            return true;
+        }
+
+        if(isset($this->client->logger)) {
+            $this->client->logger->error('Unable to connect to {server}.', [
+                'server' => $this->_server
+            ]);
+        }
+        return false;
     }
 
     public function disconnect()
@@ -95,16 +120,34 @@ class TcpConnector extends AbstractConnector {
         return $this->_connection->connected;
     }
 
-    // TODO: better lookup
     private function _lookup() {
-        $results = dns_get_record('_xmpp-client._tcp.'.$this->_server, DNS_SRV);
-        foreach($results as $result) {
-            if(isset($result['target'])) {
-                $this->_server = $result['target'];
-                if(isset($result['port'])) $this->_port = $result['port'];
-                break;
+        static $results;
+
+        if(!isset($results)) {
+            $results = [];
+            $dns = dns_get_record('_xmpp-client._tcp.'.$this->_server, DNS_SRV);
+            if(!$dns) {
+                if(isset($this->client->logger)) {
+                    $this->client->logger->notice('This server has no SRV records for XMPP, using {server} and {port} port', [
+                        'server' => $this->_server,
+                        'port' => $this->_port
+                    ]);
+                }
+
+                return [$this->_server, $this->_port];
             }
+
+            foreach($dns as $result) {
+                $results[] = [
+                    $result['target'],
+                    $result['port']
+                ];
+            }
+
+            return reset($results);
         }
+
+        return next($results);
     }
 
     public function _onPacket($conn, $xml) {
