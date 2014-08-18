@@ -7,35 +7,41 @@ class Jid
      * Users name
      * @var string
      */
-    public $name;
+    public $name = null;
 
     /**
      * Users server
      * @var string
      */
-    public $server;
+    public $server = null;
 
     /**
      * Users resource
      * @var string|null
      */
-    public $resource;
+    public $resource = null;
 
     /**
-     * @param string $name Login or jid string.
+     * @param string $name
      * @param string $resource
      * @param string|null $server
      */
     public function __construct($name, $server = null, $resource = null)
     {
-        if (preg_match('#([^@\/\"\'\s\&\:><]+)\@([a-z_\-\.]*[a-z]{2,3})(\/[^@\&\:><]*)?#si', $name, $matches)) {
-            $this->name = $matches[1];
-            $this->resource = isset($matches[3]) ? substr($matches[3], 1) : null;
-            $this->server = $matches[2];
+        if($server === null) {
+            preg_match(
+                '#(?:(?P<name>[^@\/\"\'\s\&\:><]+)@)?(?P<server>[a-z_\-\.]*)(?:\/(?P<resource>[^\&\:><]*))?#si',
+                $name,
+                $matches
+            );
+
+            $this->name = isset($matches['name']) ? $matches['name'] : null;
+            $this->server = isset($matches['server']) ? $matches['server'] : null;
+            $this->resource = isset($matches['resource']) ? $matches['resource'] : null;
         } else {
             $this->name = $name;
-            $this->resource = $resource;
             $this->server = $server;
+            $this->resource = $resource;
         }
     }
 
@@ -45,7 +51,7 @@ class Jid
      */
     public function __toString()
     {
-        return "{$this->name}@{$this->server}" . (!empty($this->resource) ? "/{$this->resource}" : '');
+        return (!empty($this->name) ? "{$this->name}@" : '') . $this->server . (!empty($this->resource) ? "/{$this->resource}" : '');
     }
 
     /**
@@ -76,6 +82,6 @@ class Jid
     static public function isJid($jid)
     {
         if($jid instanceof Jid) return true;
-        return preg_match('#([^@\/\"\'\s\&\:><]+)\@([a-z_\-\.]*[a-z]{2,3})(\/[^@\&\:><]*)?#si', $jid);
+        return preg_match('#(?:(?P<name>[^@\/\"\'\s\&\:><]+)@)?(?P<server>[a-z_\-\.]*)(?:\/(?P<resource>[^\&\:><]*))?#si', $jid);
     }
 }

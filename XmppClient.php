@@ -401,14 +401,13 @@ class XmppClient
     public function _onAuth(XmppClient $client, $result)
     {
         if ($result->xml->getName() == 'success') {
-
             if ($this->logger)
                 $this->logger->info('SASL Auth successful.');
 
             $this->_connector->streamRestart($this->jid);
             $this->_bind();
-        } else
-            throw new \RuntimeException('Authorization failed.');
+        } elseif ($this->logger)
+            $this->logger->error('SASL Auth failed, reason: {reason}', ['reason' => $result->text[0]]);
     }
 
     /**
