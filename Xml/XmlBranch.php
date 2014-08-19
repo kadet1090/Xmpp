@@ -82,7 +82,7 @@ class XmlBranch implements \ArrayAccess
      */
     public function setContent($content)
     {
-        $this->content = htmlspecialchars(trim($content));
+        $this->content = trim($content);
     }
 
     /**
