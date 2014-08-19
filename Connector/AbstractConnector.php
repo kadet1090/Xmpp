@@ -28,6 +28,7 @@ use Psr\Log\LoggerInterface;
  *
  * @property-read XmlBranch $features
  * @property-read object    $info
+ * @property-read bool      $connected
  */
 abstract class AbstractConnector
 {

@@ -3,6 +3,7 @@ namespace Kadet\Xmpp;
 
 use Kadet\SocketLib\Utils\Logger;
 use Kadet\Utils\Event;
+use Kadet\Utils\Property;
 use Kadet\Utils\Timer;
 use Kadet\Xmpp\Connector\AbstractConnector;
 use Kadet\Xmpp\Connector\TcpConnector;
@@ -19,9 +20,13 @@ use Kadet\Xmpp\Xml\XmlBranch;
  *
  * @package Kadet\Xmpp
  * @author  Kadet <kadet1090@gmail.com>
+ *
+ * @property-read bool $connected
  */
 class XmppClient
 {
+    use Property;
+
     /**
      * Event fired when authorization process ends.
      *
@@ -172,7 +177,7 @@ class XmppClient
      *
      * @var AbstractConnector
      */
-    protected $_connector;
+    public $connector;
 
     /**
      * Password to jabber account.
@@ -202,8 +207,8 @@ class XmppClient
         if(!$connector)
             $connector = new TcpConnector($jid->server);
 
-        $this->_connector = $connector;
-        $this->_connector->client = $this;
+        $this->connector = $connector;
+        $this->connector->client = $this;
 
         $this->jid      = $jid;
         $this->password = $password;
@@ -230,11 +235,11 @@ class XmppClient
         $this->keepAliveTimer = new Timer(15, array($this, 'keepAliveTick'));
         $this->keepAliveTimer->stop(); // We don't want to run this before connection is finalized.
 
-        $this->_connector->onConnect->add(function($c) { $this->onConnect->run($this); });
-        $this->_connector->onDisconnect->add(function($c) { $this->onDisconnect->run($this); });
+        $this->connector->onConnect->add(function($c) { $this->onConnect->run($this); });
+        $this->connector->onDisconnect->add(function($c) { $this->onDisconnect->run($this); });
 
-        $this->_connector->onReceive->add([$this, 'connector_onReceive']);
-        $this->_connector->onFeatures->add([$this, 'connector_onFeatures']);
+        $this->connector->onReceive->add([$this, 'connector_onReceive']);
+        $this->connector->onFeatures->add([$this, 'connector_onFeatures']);
 
         $this->onConnect->add(array($this, '_onConnect'));
         $this->onAuth->add(array($this, '_onAuth'));
@@ -254,7 +259,7 @@ class XmppClient
             'wrap'             => 0
         ];
 
-        $this->_connector->onSend->add(function ($socket, $packet) use ($settings) {
+        $this->connector->onSend->add(function ($socket, $packet) use ($settings) {
             $len = strlen($packet);
 
             if (function_exists('tidy_repair_string'))
@@ -267,7 +272,7 @@ class XmppClient
                 ]);
         });
 
-        $this->_connector->onReceive->add(function ($socket, $packet) use ($settings) {
+        $this->connector->onReceive->add(function ($socket, $packet) use ($settings) {
             $len = strlen($packet);
 
             if (function_exists('tidy_repair_string'))
@@ -294,7 +299,7 @@ class XmppClient
      */
     public function _onConnect(XmppClient $client)
     {
-        $this->_connector->streamRestart($this->jid);
+        $this->connector->streamRestart($this->jid);
     }
 
     public function connector_onReceive(AbstractConnector $connector, $packet) {
@@ -303,7 +308,7 @@ class XmppClient
 
     public function write($packet)
     {
-        $this->_connector->send($packet instanceof XmlBranch ? $packet->asXml() : (string)$packet);
+        $this->connector->send($packet instanceof XmlBranch ? $packet->asXml() : (string)$packet);
     }
 
     /**
@@ -361,15 +366,15 @@ class XmppClient
             $this->logger->notice('SASL Auth, available mechanisms: {mechanisms}', [
                 'mechanisms' => implode(', ', array_map(function ($item) {
                     return $item->content;
-                }, (array)$this->_connector->features->mechanisms[0]->mechanism))
+                }, (array)$this->connector->features->mechanisms[0]->mechanism))
             ]);
 
         $xml = new XmlBranch('auth');
         $xml->addAttribute('xmlns', 'urn:ietf:params:xml:ns:xmpp-sasl');
 
         $mechanism = null;
-        $this->_connector->features->mechanisms[0]->mechanism->getIterator();
-        foreach ($this->_connector->features->mechanisms[0]->mechanism as $current) {
+        $this->connector->features->mechanisms[0]->mechanism->getIterator();
+        foreach ($this->connector->features->mechanisms[0]->mechanism as $current) {
             if ($mechanism = SaslFactory::get($current->content, $this->jid, $this->password))
                 break;
         }
@@ -404,7 +409,7 @@ class XmppClient
             if ($this->logger)
                 $this->logger->info('SASL Auth successful.');
 
-            $this->_connector->streamRestart($this->jid);
+            $this->connector->streamRestart($this->jid);
             $this->_bind();
         } elseif ($this->logger)
             $this->logger->error('SASL Auth failed, reason: {reason}', ['reason' => $result->text[0]]);
@@ -447,8 +452,8 @@ class XmppClient
             if ($this->logger)
                 $this->logger->info('TLS Connection established.');
 
-            $this->_connector->startTls();
-            $this->_connector->streamRestart($this->jid);
+            $this->connector->startTls();
+            $this->connector->streamRestart($this->jid);
         } else
             throw new \RuntimeException('Tls negotiation failed.');
     }
@@ -684,7 +689,7 @@ class XmppClient
             $this->onTick->run($this);
 
         Timer::update();
-        $this->_connector->read();
+        $this->connector->read();
     }
 
     /**
@@ -692,7 +697,7 @@ class XmppClient
      */
     public function connect()
     {
-        return $this->_connector->connect();
+        return $this->connector->connect();
     }
 
     /**
