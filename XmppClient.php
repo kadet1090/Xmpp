@@ -998,4 +998,8 @@ class XmppClient
     {
         $this->logger->info('Disconnected.');
     }
+
+    public function disconnect() {
+        $this->connector->disconnect();
+    }
 }
