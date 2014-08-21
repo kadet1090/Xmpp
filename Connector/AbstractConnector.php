@@ -19,7 +19,6 @@ use Kadet\Utils\Event;
 use Kadet\Utils\Property;
 use Kadet\Xmpp\Xml\XmlBranch;
 use Kadet\Xmpp\XmppClient;
-use Psr\Log\LoggerInterface;
 
 /**
  * Class AbstractConnector
@@ -86,14 +85,15 @@ abstract class AbstractConnector
 
     public function __construct()
     {
-        $this->onReceive     = new Event();
-        $this->onSend        = new Event();
-        $this->onConnect     = new Event();
-        $this->onDisconnect  = new Event();
-        $this->onOpen        = new Event();
-        $this->onClose       = new Event();
-        $this->onStreamError = new Event();
-        $this->onFeatures    = new Event();
+        $this->onReceive         = new Event();
+        $this->onSend            = new Event();
+        $this->onConnect         = new Event();
+        $this->onDisconnect      = new Event();
+        $this->onOpen            = new Event();
+        $this->onClose           = new Event();
+        $this->onStreamError     = new Event();
+        $this->onConnectionError = new Event();
+        $this->onFeatures        = new Event();
     }
 
     public abstract function connect();

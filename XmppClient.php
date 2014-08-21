@@ -326,6 +326,30 @@ class XmppClient
     }
 
     /**
+     * @param string $type
+     * @param int    $id
+     * @param int    $timeout Timeout in seconds
+     *
+     * @return Stanza
+     */
+    public function block($type, $id, $timeout = 10)
+    {
+        $start = time();
+        $packet = null;
+
+        $this->wait($type, $id, function ($pckt) use (&$packet) {
+            $packet = $pckt;
+        });
+
+        while(!$packet && time() - $start < $timeout) {
+            $this->process();
+            usleep(5000);
+        }
+
+        return $packet;
+    }
+
+    /**
      * Should be private, but... php sucks!
      * DO NOT RUN IT, TRUST ME.
      *
