@@ -1002,4 +1002,9 @@ class XmppClient
     public function disconnect() {
         $this->connector->disconnect();
     }
+
+    public function __destruct() {
+        if($this->connector->connected)
+            $this->disconnect();
+    }
 }

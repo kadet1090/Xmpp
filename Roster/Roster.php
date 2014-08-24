@@ -61,12 +61,14 @@ class Roster implements \ArrayAccess, \IteratorAggregate
         $changed = [];
         switch ($iq->type) {
             case 'error':
-                $client->logger->warning('Error while retrieving roster from server!');
+                if(isset($client->logger))
+                    $client->logger->warning('Error while retrieving roster from server!');
                 return;
             case 'set':
             case 'result':
                 if(!isset($iq->query->item)) {
-                    $client->logger->info('Received empty roster.');
+                    if(isset($client->logger))
+                        $client->logger->info('Received empty roster.');
                     return;
                 }
 
@@ -76,7 +78,8 @@ class Roster implements \ArrayAccess, \IteratorAggregate
                 break;
         }
 
-        $client->logger->info('Received {count} roster items.', ['count' => count($changed)]);
+        if(isset($client->logger))
+            $client->logger->info('Received {count} roster items.', ['count' => count($changed)]);
         $this->onComplete->run($this, $changed);
     }
 

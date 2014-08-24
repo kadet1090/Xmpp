@@ -16,6 +16,7 @@ namespace Kadet\Xmpp\Connector;
 
 use Kadet\SocketLib\NetworkException;
 use Kadet\SocketLib\SocketClient;
+use Kadet\Utils\Timer;
 use Kadet\Xmpp\Stanza\Stanza;
 use Kadet\Xmpp\Xml\XmlBranch;
 
@@ -44,6 +45,9 @@ class TcpConnector extends AbstractConnector {
         $this->_port   = $port;
 
         $this->onReceive->add([$this, '_onPacket']);
+
+        $this->keepAliveTimer = new Timer(15, [$this, 'keepAliveTick']);
+        $this->keepAliveTimer->stop(); // We don't want to run this before connection is finalized.
     }
 
     public function connect()
