@@ -178,7 +178,7 @@ class XmlBranch implements \ArrayAccess
         $name = $xml->getName();
         $name = strpos($name, ':') !== false ? substr(strstr($name, ':'), 1) : $name; // > SimpleXML
         $ns   = $xml->getNamespaces();
-        $ns   = isset($ms['']) ? $ns[''] : null;
+        $ns   = isset($ns['']) ? $ns[''] : null;
 
         if(isset(self::$bind["{$ns}/{$name}"]))
             $class = self::$bind["{$ns}/{$name}"];

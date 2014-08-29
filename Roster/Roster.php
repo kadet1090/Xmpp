@@ -72,8 +72,10 @@ class Roster implements \ArrayAccess, \IteratorAggregate
                     return;
                 }
 
-                foreach ($iq->query->item as $item)
-                    $changed[] = $this->fromXml($item);
+                foreach ($iq->query->item as $item) {
+                    $changed[] = $item;
+                    $this->onItem->run($this, $item);
+                }
 
                 break;
         }
@@ -97,52 +99,13 @@ class Roster implements \ArrayAccess, \IteratorAggregate
     // @todo groups support
     public function add(Jid $jid, $name = null, $groups = [])
     {
-        $item = new RosterItem($this, $jid, $name);
-        $this->_client->write($this->itemXml($item));
+        $item = new RosterItem($jid, $name);
+        $this->_client->write($item->asXml());
     }
 
     public function _onItemChange(RosterItem $item)
     {
-
-        $this->_client->write($this->itemXml($item));
-    }
-
-    private function itemXml(RosterItem $item)
-    {
-        $xml = new XmlBranch("iq");
-        $xml->addAttribute("id", uniqid('roster_'));
-        $xml->addAttribute('from', $this->_client->jid);
-        $xml->addAttribute("type", "set");
-        $xml->addChild(new XmlBranch("query"))->addAttribute("xmlns", "jabber:iq:roster");
-        $xml->query[0]->addChild(new XmlBranch('item'))->addAttribute('jid', $item->jid->bare());
-
-        if ($item->name != null) $xml->query[0]->item[0]->addAttribute('name', $item->name);
-        if (!empty($groups)) {
-            foreach ($groups as $group) {
-                $xml->query[0]->item[0]->addChild(new XmlBranch('group'))->setContent('group');
-            }
-        }
-
-        return $xml;
-    }
-
-    private function fromXml($item)
-    {
-        $contact = RosterItem::fromXml($this, $item);
-        $this->onItem->run($this, $contact);
-        foreach ($this->_contacts as $name => $group) {
-            foreach ($group as $key => $rc) {
-                if ($rc->jid->bare() == $contact->jid->bare())
-                    unset($this->_contacts[$name][$key]);
-            }
-        }
-
-        foreach ($contact->groups as $group) {
-            if (!isset($this->_contacts[$group])) $this->_contacts[$group] = [];
-            $this->_contacts[$group][$contact->name] = & $contact;
-        }
-
-        return $contact;
+        $this->_client->write($item->asXml());
     }
 
     /**

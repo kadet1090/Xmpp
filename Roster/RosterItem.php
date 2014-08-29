@@ -12,10 +12,11 @@ namespace Kadet\Xmpp\Roster;
 use Kadet\Utils\Property;
 use Kadet\Xmpp\Jid;
 use Kadet\Xmpp\Stanza\Presence;
-use Kadet\Xmpp\Xml\XmlArray;
+use Kadet\Xmpp\Xml\XmlBranch;
 
 /**
  * Class RosterItem
+ *
  * @package Kadet\Xmpp\Roster
  * @property-read string   $subscription
  * @property-read bool     $approved
@@ -25,57 +26,54 @@ use Kadet\Xmpp\Xml\XmlArray;
  * @property      string   $name
  * @property      Jid      $jid
  */
-class RosterItem
+class RosterItem extends XmlBranch
 {
     use Property;
 
-    private $_name;
-    private $_jid;
-    private $_subscription;
-    private $_approved;
-    private $_ask;
-
     private $_presence = null;
-
     private $_groups = [];
 
-    private $_roster;
-
     //<editor-fold desc="Accessors">
+
+    public function __construct(Jid $jid = null, $name = null)
+    {
+        $this->jid  = $jid;
+        $this->name = $name;
+    }
+
     public function _get_name()
     {
-        return $this->_name;
+        return isset($this['name']) ? $this['name'] : $this['jid'];
     }
 
     public function _set_name($name)
     {
-        $this->_name = $name;
-        $this->_roster->onItemChange->run($this->_roster, $this);
+        $this['name'] = $name;
     }
 
     public function _get_groups()
     {
-        return $this->_groups;
+
     }
 
     public function _get_jid()
     {
-        return $this->_jid;
+        return new Jid($this['jid']);
     }
 
-    public function _set_jid()
+    public function _set_jid(Jid $jid = null)
     {
-        // TODO: add ability to change jid [remove, and add contact]
+        $this['jid'] = $jid ? $jid->bare() : null;
     }
 
     public function _get_subscription()
     {
-        return $this->_subscription;
+        return isset($this['subscription']) ? $this['subscription'] : 'both';
     }
 
     public function _get_ask()
     {
-        return $this->_ask;
+        return isset($this['ask']) ? $this['ask'] : 'none';
     }
 
     public function _get_presence()
@@ -83,57 +81,30 @@ class RosterItem
         return $this->_presence;
     }
 
-    public function _get_approved()
-    {
-        return $this->_approved;
-    }
     //</editor-fold>
 
-    public function __construct(Roster $roster, Jid $jid, $name = null)
+    public function _get_approved()
     {
-        $this->_roster = $roster;
-        $this->_jid = $jid;
-        $this->_name = $name == null ? (string)$jid : $name;
+        return !(isset($this['approved']) && $this['approved'] == 'false');
     }
 
     public function addGroup($group)
     {
         if (!array_search($group, $this->_groups))
             $this->_groups[] = $group;
-        $this->_roster->onItemChange->run($this->_roster, $this);
     }
 
     public function removeGroup($group)
     {
         if ($key = array_search($group, $this->_groups))
             unset($this->_groups[$key]);
-        $this->_roster->onItemChange->run($this->_roster, $this);
     }
 
     public function applyPresence(Presence $presence)
     {
-        if($presence->type != 'unavailable')
+        if ($presence->type != 'unavailable')
             $this->_presence[$presence->from->resource] = $presence;
         else
             unset($this->_presence[$presence->from->resource]);
-    }
-
-    public static function fromXml(Roster $roster, $xml)
-    {
-        $item = new RosterItem($roster, new Jid((string)$xml['jid']), isset($xml['name']) ? (string)$xml['name'] : null);
-        $item->_approved = isset($xml['approved']) && $xml['approved'] == 'false' ? false : true;
-        $item->_subscription = isset($xml['subscription']) ? (string)$xml['subscription'] : 'both';
-        $item->_ask = isset($xml['ask']) ? (string)$xml['ask'] : 'none';
-
-        if (!isset($xml->group)) {
-            $item->_groups[] = 'default';
-        } elseif (!($xml->group instanceof XmlArray)) {
-            $item->_groups[] = (string)$xml->group;
-        } else {
-            foreach ($xml->group as $group)
-                $item->_groups[] = (string)$group;
-        }
-
-        return $item;
     }
 } 

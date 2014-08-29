@@ -13,8 +13,10 @@
 
 function getCompleteXml($xml) {
     for($i = strpos($xml, '<', 0), $n = 0; $i !== false; $i = strpos($xml, '<', $i + 1)) {
-        if((strpos($xml, '/>', $i + 1) > strpos($xml, '<', $i + 1) && strpos($xml, '<', $i + 1) !== false) || strpos($xml, '/>', $i + 1) === false)
+        if((strpos($xml, '/>', $i + 1) > strpos($xml, '<', $i + 1) && strpos($xml, '<', $i + 1) !== false) || strpos($xml, '/>', $i + 1) === false) {
+            if(!isset($xml[$i + 1])) return false;
             $xml[$i + 1] == '/' ? $n++ : $n--;
+        }
         if($n == 0)
             return substr($xml, strpos($xml, '<', 0), strpos($xml, '<', $i + 1) !== false ? strpos($xml, '<', $i + 1) : strlen($xml));;
     }
