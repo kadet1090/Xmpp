@@ -63,7 +63,7 @@ class RosterItem extends XmlBranch
 
     public function _set_jid(Jid $jid = null)
     {
-        $this['jid'] = $jid ? $jid->bare() : null;
+        $this['jid'] =  $jid ? $jid->bare() : null;
     }
 
     public function _get_subscription()
