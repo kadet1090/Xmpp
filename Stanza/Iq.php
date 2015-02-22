@@ -11,8 +11,6 @@ namespace Kadet\Xmpp\Stanza;
 
 use Kadet\Xmpp\Stanza\Iq\Query;
 use Kadet\Xmpp\Xml\XmlArray;
-use Kadet\Xmpp\Xml\XmlBranch;
-use Kadet\Xmpp\XmppClient;
 
 /**
  * Class Iq

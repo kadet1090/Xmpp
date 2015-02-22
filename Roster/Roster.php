@@ -56,7 +56,7 @@ class Roster implements \ArrayAccess, \IteratorAggregate
      */
     public function _onIq(XmppClient $client, Iq $iq)
     {
-        if ($iq->query == null || $iq->query->namespace != 'jabber:iq:roster') return;
+        if ($iq->query === null || $iq->query->namespace != 'jabber:iq:roster') return;
 
         $changed = [];
         switch ($iq->type) {

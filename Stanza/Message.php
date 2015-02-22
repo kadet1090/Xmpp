@@ -1,16 +1,7 @@
 <?php
-/**
- * Created by JetBrains PhpStorm.
- * User: Kacper
- * Date: 08.08.13
- * Time: 21:31
- * To change this template use File | Settings | File Templates.
- */
 
 namespace Kadet\Xmpp\Stanza;
 use Kadet\Xmpp\Xml\XmlArray;
-use Kadet\Xmpp\Xml\XmlBranch;
-use Kadet\Xmpp\XmppClient;
 
 /**
  * Class Message
@@ -65,9 +56,9 @@ class Message extends Stanza {
     public function __construct($body = null, $to = null, $type = 'chat', $from = null)
     {
         parent::__construct('message');
-        if($body != null) $this->body = $body;
-        if($from != null) $this->from = $from;
-        if($to != null) $this->to = $to;
+        if($body !== null) $this->body = $body;
+        if($from !== null) $this->from = $from;
+        if($to !== null) $this->to = $to;
         $this->type = $type;
     }
 

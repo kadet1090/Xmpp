@@ -12,7 +12,6 @@ namespace Kadet\Xmpp\Stanza;
 use Kadet\Xmpp\Jid;
 use Kadet\Xmpp\Xml\XmlArray;
 use Kadet\Xmpp\Xml\XmlBranch;
-use Kadet\Xmpp\XmppClient;
 
 /**
  * Class Presence
