@@ -189,7 +189,7 @@ class TcpConnector extends AbstractConnector {
         if(strstr($this->_buffer, '</stream:stream>'))
             $this->onClose->run($this);
 
-        while ($packet = getCompleteXml($this->_buffer)) {
+        while ($packet = XmlBranch::getCompleteXml($this->_buffer)) {
             $this->_buffer = str_replace($packet, '', $this->_buffer);
             $this->onReceive->run($this, $packet);
         }
