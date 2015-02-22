@@ -354,8 +354,11 @@ class XmppClient
      * DO NOT RUN IT, TRUST ME.
      *
      * @internal
+     *
+     * @param AbstractConnector $connector
+     * @param XmlBranch         $features
      */
-    public function connector_onFeatures($connector, $features)
+    public function connector_onFeatures(AbstractConnector $connector, XmlBranch $features)
     {
         if (isset($features->starttls)) {
             $this->startTls();
@@ -388,7 +391,7 @@ class XmppClient
     {
         if ($this->logger)
             $this->logger->notice('SASL Auth, available mechanisms: {mechanisms}', [
-                'mechanisms' => implode(', ', array_map(function ($item) {
+                'mechanisms' => implode(', ', array_map(function (XmlBranch $item) {
                     return $item->content;
                 }, (array)$this->connector->features->mechanisms[0]->mechanism))
             ]);
@@ -427,7 +430,7 @@ class XmppClient
      * @throws \RuntimeException
      * @internal
      */
-    public function _onAuth(XmppClient $client, $result)
+    public function _onAuth(XmppClient $client, Stanza $result)
     {
         if ($result->xml->getName() == 'success') {
             if ($this->logger)
@@ -470,7 +473,7 @@ class XmppClient
      * @throws \RuntimeException
      * @internal
      */
-    public function _onTls(XmppClient $client, $result)
+    public function _onTls(XmppClient $client, Stanza $result)
     {
         if ($result->tag == 'proceed') {
             if ($this->logger)
@@ -491,7 +494,7 @@ class XmppClient
      *
      * @internal
      */
-    public function _bindResult($packet)
+    public function _bindResult(Stanza $packet)
     {
         if ($packet['type'] == 'result') {
             $iq = new xmlBranch("iq");
@@ -510,6 +513,8 @@ class XmppClient
      * DO NOT RUN IT, TRUST ME.
      *
      * @ignore
+     *
+     * @param XmppClient $client
      */
     public function _onReady(XmppClient $client)
     {

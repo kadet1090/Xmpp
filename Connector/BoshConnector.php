@@ -97,7 +97,7 @@ class BoshConnector extends AbstractConnector
 
         $this->_send();
 
-        $available = array_filter($this->_connections, function ($connection) {
+        $available = array_filter($this->_connections, function (SocketClient $connection) {
             return $connection->busy;
         });
 
@@ -110,7 +110,7 @@ class BoshConnector extends AbstractConnector
     {
         if (empty($this->_queue)) return;
 
-        $available = array_filter($this->_connections, function ($connection) {
+        $available = array_filter($this->_connections, function (SocketClient $connection) {
             return !$connection->busy;
         });
 
@@ -248,7 +248,7 @@ class BoshConnector extends AbstractConnector
 
     protected function _get_connection()
     {
-        $available = array_filter($this->_connections, function ($connection) {
+        $available = array_filter($this->_connections, function (SocketClient $connection) {
             return !$connection->busy;
         });
 
